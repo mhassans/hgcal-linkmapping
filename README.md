@@ -1,1 +1,2 @@
-# hgcal-linkmapping
+# HGCal link mapping studies
+
