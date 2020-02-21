@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import pandas as pd
 import numpy as np
+from rotate import rotate
 import matplotlib.pyplot as plt
+
 
 pd.set_option('display.max_rows', None)
 
@@ -44,8 +46,12 @@ def getlpGBTLoadInfo(data,data_tcs_passing):
                     continue
 
                 #Get the number of TCs (hardcoded to 48 for now, the number passing threshold is less)
-                ntcs = data_tcs_passing[(data_tcs_passing['layer']==row['layer'])&(data_tcs_passing['u']==row['u'])&(data_tcs_passing['v']==row['v'])]['nTCs'].values[0]
+                rot0 = [row['u'],row['v']]
+                rot1 = rotate(row['u'],row['v'],row['layer'],1)
+                rot2 = rotate(row['u'],row['v'],row['layer'],2)
 
+#                ntcs = data_tcs_passing[(data_tcs_passing['layer']==row['layer'])&(data_tcs_passing['u']==row['u'])&(data_tcs_passing['v']==row['v'])]['nTCs'].values[0]
+                ntcs = data_tcs_passing[(data_tcs_passing['layer']==row['layer'])&((data_tcs_passing['u']==rot0[0])|(data_tcs_passing['u']==rot1[0])|(data_tcs_passing['u']==rot2[0]))&((data_tcs_passing['v']==rot0[1])|(data_tcs_passing['v']==rot1[1])|(data_tcs_passing['v']==rot2[1]))]['nTCs'].values[0]
                 tc_load += row['TPGeLinkFrac1'] * ntcs #Add the number of trigger cells from a given module to the lpgbt
         if (tc_load > 1):
             lpgbt_loads.append(tc_load)
@@ -85,6 +91,7 @@ def main():
     #Plot Variables of interest
     plot(lpgbt_loads,"loads.png")
     plot2D(lpgbt_loads,layers,"n_vs_layer.png")
-    
+
+
     
 main()
