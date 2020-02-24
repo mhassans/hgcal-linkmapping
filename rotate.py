@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 
 def rotate_cell_around_centre_general(cell,centre):
 
@@ -81,5 +82,14 @@ def rotate_to_sector_0(u,v,layer):
         else: #sector 2
             return rotate_cell_CEE(uv)
 
+def main():
+    
+    u = int(sys.argv[1])
+    v = int(sys.argv[2])
+    layer = int(sys.argv[3])
 
-            
+    uv = rotate_to_sector_0(u,v,layer)
+    print ( "python: " +  str(uv[0]) + "," + str(uv[1]) )
+
+
+main()
