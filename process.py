@@ -56,8 +56,13 @@ def getlpGBTLoadInfo(data,data_tcs_passing):
                 line = data_tcs_passing[(data_tcs_passing['layer']==row['layer'])&(data_tcs_passing['u']==row['u'])&(data_tcs_passing['v']==row['v'])]
                 nwords = line['nWords'].values[0]
                 ntcs = line['nTCs'].values[0]
-                tc_load += row['TPGeLinkFrac1'] * ntcs #Add the number of trigger cells from a given module to the lpgbt
-                word_load += row['TPGeLinkFrac1'] * nwords #Add the number of trigger cells from a given module to the lpgbt
+
+                linkfrac = 'TPGeLinkFrac1'
+                if ( tpg_index == 'TPGId2' ):
+                    linkfrac = 'TPGeLinkFrac2'
+                
+                tc_load += row[linkfrac] * ntcs #Add the number of trigger cells from a given module to the lpgbt
+                word_load += row[linkfrac] * nwords #Add the number of trigger cells from a given module to the lpgbt
 
         if (lpgbt_found):
             lpgbt_loads_tcs.append(tc_load)

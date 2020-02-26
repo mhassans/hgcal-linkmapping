@@ -127,7 +127,6 @@ int main(){
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
       nb = tree->GetEntry(jentry);   
       if (jentry % 10000 == 0) std::cout << jentry << " / " << nentries << std::endl;;
-      if (jentry > 1) break;
 
       unsigned nWords = 0;
 
