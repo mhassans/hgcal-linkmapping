@@ -26,7 +26,7 @@ def getTCsPassing():
 
     #Set number of TCs by hand for now (In reality this number is taken per event from CMSSW)
     column_names=[ 'u', 'v', 'layer', 'nTCs', 'nWords' ]
-    data = pd.read_csv("data/average_tcs.csv",names=column_names)
+    data = pd.read_csv("data/average_tcs_20200226.csv",names=column_names)
 
     return data
     
@@ -71,7 +71,43 @@ def getlpGBTLoadInfo(data,data_tcs_passing):
 
     return lpgbt_loads_tcs,lpgbt_loads_words,layers
 
+def getHexModuleLoadInfo(data,data_tcs_passing):
 
+    module_loads_words=[]
+    layers = []
+    
+    for index, row in data.iterrows():  
+
+        if ( row['TPGeLinkSum'] < 0 ):
+            continue
+        # if (row['density']==2):#ignore scintillator for now
+        #     continue
+        
+        module_layer = row['layer']
+        line = data_tcs_passing[(data_tcs_passing['layer']==row['layer'])&(data_tcs_passing['u']==row['u'])&(data_tcs_passing['v']==row['v'])]
+        #print (line['nWords'].values[0])
+        nwords = line['nWords'].values[0]
+        ntcs = line['nTCs'].values[0]
+
+        if ( ntcs == 0 ):
+            print (row['layer'],row['u'],row['v'])
+        word_load = nwords / (2 * row['TPGeLinkSum'] )
+        module_loads_words.append(word_load)
+        layers.append(module_layer)
+        
+    return module_loads_words,layers
+
+def check_for_missing_modules(data,data_tcs_passing):
+
+    mappingfile = data[['u','v','layer']]
+    cmssw = data_tcs_passing[['u','v','layer','nTCs']]
+
+    onlymapping = mappingfile.merge(cmssw.drop_duplicates(), on=['u','v','layer'],how='left', indicator=True)
+    onlycmssw = cmssw.merge(mappingfile.drop_duplicates(), on=['u','v','layer'],how='left', indicator=True)
+
+    onlycmssw = onlycmssw[onlycmssw['_merge'] == 'left_only']
+    print (onlycmssw[onlycmssw['nTCs']>0][['layer','u','v']].to_string(index=False))
+    
 def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a single lpGBT'):
     fig = plt.figure()
     binwidth=binwidth
@@ -81,11 +117,11 @@ def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a si
     plt.savefig(savename)
     
 
-def plot2D(variable_x,variable_y,savename="hist2D.png",xtitle='Number of words on a single lpGBT'):
+def plot2D(variable_x,variable_y,savename="hist2D.png",binwidthx=1,binwidthy=1,xtitle='Number of words on a single lpGBT'):
     
     fig = plt.figure()
-    binwidth=1
-    plt.hist2d(variable_x,variable_y,bins=[np.arange(min(variable_x), max(variable_x) + binwidth, binwidth),np.arange(min(variable_y), max(variable_y) + binwidth, binwidth)])
+    binwidth=binwidth
+    plt.hist2d(variable_x,variable_y,bins=[np.arange(min(variable_x), max(variable_x) + binwidth, binwidth),np.arange(min(variable_y), max(variable_y) + binwidthy, binwidthy)])
     plt.colorbar()
     plt.ylabel('Layer')
     plt.xlabel(xtitle)
@@ -96,14 +132,24 @@ def main():
     #Load Data    
     data = loadDataFile() #dataframe
     data_tcs_passing = getTCsPassing() #from CMSSW
-    lpgbt_loads_tcs,lpgbt_loads_words,layers = getlpGBTLoadInfo(data,data_tcs_passing)
+    #lpgbt_loads_tcs,lpgbt_loads_words,layers = getlpGBTLoadInfo(data,data_tcs_passing)
 
+    #Check for missing modules
+    #check_for_missing_modules(data,data_tcs_passing)
+    
+    module_loads_words,layers = getHexModuleLoadInfo(data,data_tcs_passing)
+    
     #Plot Variables of interest
-    plot(lpgbt_loads_tcs,"loads_tcs.png",binwidth=0.1,xtitle='Number of TCs on a single lpGBT')
-    plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
-    plot2D(lpgbt_loads_tcs,layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
-    plot2D(lpgbt_loads_words,layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
 
+    # plot(lpgbt_loads_tcs,"loads_tcs.png",binwidth=0.1,xtitle='Number of TCs on a single lpGBT')
+    # plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
+    # plot2D(lpgbt_loads_tcs,layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
+    # plot2D(lpgbt_loads_words,layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
+
+
+    plot(module_loads_words,"module_loads_words.png",binwidth=0.01,xtitle=r'Average number of words on a single module / $2 \times N_{e-links}$')
+    plot2D(module_loads_words,layers,"module_words_vs_layer.png",binwidthx=0.05,binwidthy=1,xtitle=r'Average number of words on a single module / $2 \times N_{e-links}$')
+    
 
 
     
