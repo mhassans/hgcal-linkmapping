@@ -91,10 +91,10 @@ unsigned uvMapping(unsigned layer, std::pair<int,int> &uv) {
 unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
  unsigned sector(0);
 
- if (etaphi.second <= 60){
-   return sector;
+ if (etaphi.second <= 48){
+   sector = 0;
  }
- else if (etaphi.second > 60 && etaphi.second <= 120){
+ else if (etaphi.second > 48 && etaphi.second <= 96){
    sector = 1;
  }
  else {
@@ -105,24 +105,23 @@ unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
  int pp;
 
  if(sector==1) {
-   pp=etaphi.second-60;
- } else {
-   pp=etaphi.second-120;
+   pp=etaphi.second-48;
+ } else if(sector==2) {
+   pp=etaphi.second-96;
  }
 
- pp/=36;
- pp-=1;
+ pp = (pp-1)/4; //Phi index 1-12
  
- if ( etaphi.first <= 2 ){
+ if ( etaphi.first <= 3 ){
    ep = 0;
  }
- else if ( etaphi.first <= 8 ){
+ else if ( etaphi.first <= 9 ){
    ep = 1;
  }
- else if ( etaphi.first <= 12 ){
+ else if ( etaphi.first <= 13 ){
    ep = 2;
  }
- else if ( etaphi.first <= 16 ){
+ else if ( etaphi.first <= 17 ){
    ep = 3;
  }
  else{
@@ -178,15 +177,15 @@ int main(){
     for (int i = 0;i<per_event_plus.size();i++ ){
       per_event_plus.at(i) = new TH3D(TString("per_event_plus_hist" + std::to_string(i)),"",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5) ;
       per_event_minus.at(i) = new TH3D(TString("per_event_minus_hist" + std::to_string(i)),"",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5) ;
-      per_event_plus_scin.at(i) = new TH3D(TString("per_event_plus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,36,-0.5,35.5,52,0.5,52.5) ;
-      per_event_minus_scin.at(i) = new TH3D(TString("per_event_minus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,36,-0.5,35.5,52,0.5,52.5) ;
+      per_event_plus_scin.at(i) = new TH3D(TString("per_event_plus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5) ;
+      per_event_minus_scin.at(i) = new TH3D(TString("per_event_minus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5) ;
     }
 
     TH3D * out_words = new TH3D("out_words_hist","",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5);
     TH3D * out_tcs = new TH3D("out_tcs_hist","",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5);
 
-    TH3D * out_words_scin = new TH3D("out_words_hist_scin","",5,-0.5,4.5,36,-0.5,35.5,52,0.5,52.5);
-    TH3D * out_tcs_scin = new TH3D("out_tcs_hist_scin","",5,-0.5,4.5,36,-0.5,35.5,52,0.5,52.5);
+    TH3D * out_words_scin = new TH3D("out_words_hist_scin","",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5);
+    TH3D * out_tcs_scin = new TH3D("out_tcs_hist_scin","",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5);
 
     Int_t nentries = (Int_t)tree->GetEntries();
     Int_t nentries_looped = 0;
@@ -291,7 +290,7 @@ int main(){
 
     fout.open ("average_tcs_scin.csv");
     for ( int i = 0; i < 5; i++){
-      for ( int j = 0; j < 36; j++){
+      for ( int j = 0; j < 12; j++){
 	for ( int k = 1; k < 53; k++){
 
 	  double ntcs = out_tcs_scin->GetBinContent(out_tcs_scin->FindBin(i,j,k));
