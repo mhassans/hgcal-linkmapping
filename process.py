@@ -89,8 +89,8 @@ def getHexModuleLoadInfo(data,data_tcs_passing):
         nwords = line['nWords'].values[0]
         ntcs = line['nTCs'].values[0]
 
-        if ( ntcs == 0 ):
-            print (row['layer'],row['u'],row['v'])
+        # if ( ntcs == 0 ):
+        #     print (row['layer'],row['u'],row['v'])
         word_load = nwords / (2 * row['TPGeLinkSum'] )
         module_loads_words.append(word_load)
         layers.append(module_layer)
@@ -120,8 +120,9 @@ def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a si
 def plot2D(variable_x,variable_y,savename="hist2D.png",binwidthx=1,binwidthy=1,xtitle='Number of words on a single lpGBT'):
     
     fig = plt.figure()
-    binwidth=binwidth
-    plt.hist2d(variable_x,variable_y,bins=[np.arange(min(variable_x), max(variable_x) + binwidth, binwidth),np.arange(min(variable_y), max(variable_y) + binwidthy, binwidthy)])
+    binwidthx=binwidthx
+    binwidthy=binwidthy
+    plt.hist2d(variable_x,variable_y,bins=[np.arange(min(variable_x), max(variable_x) + binwidthx, binwidthx),np.arange(min(variable_y), max(variable_y) + binwidthy, binwidthy)])
     plt.colorbar()
     plt.ylabel('Layer')
     plt.xlabel(xtitle)
@@ -145,7 +146,7 @@ def main():
     # plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
     # plot2D(lpgbt_loads_tcs,layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
     # plot2D(lpgbt_loads_words,layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
-
+ 
 
     plot(module_loads_words,"module_loads_words.png",binwidth=0.01,xtitle=r'Average number of words on a single module / $2 \times N_{e-links}$')
     plot2D(module_loads_words,layers,"module_words_vs_layer.png",binwidthx=0.05,binwidthy=1,xtitle=r'Average number of words on a single module / $2 \times N_{e-links}$')
