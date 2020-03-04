@@ -109,9 +109,12 @@ unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
  } else if(sector==2) {
    pp=etaphi.second-96;
  }
+ else{
+   pp = etaphi.second;
+ }
 
  pp = (pp-1)/4; //Phi index 1-12
- 
+
  if ( etaphi.first <= 3 ){
    ep = 0;
  }
@@ -131,13 +134,14 @@ unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
  etaphi.first=ep;
  etaphi.second=pp;
 
+ 
  return sector;
 }
 
 
 int main(){
 
-    TFile * file = new TFile("data/PU200-3.root","READ");
+    TFile * file = new TFile("data/PU200-V11-TTBAR.root","READ");
     TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
     
     // Declaration of leaf types
@@ -162,12 +166,10 @@ int main(){
     tree->SetBranchAddress("tc_layer" , &tc_layer , &b_tc_layer);
     tree->SetBranchAddress("tc_waferu", &tc_waferu, &b_tc_waferu);
     tree->SetBranchAddress("tc_waferv", &tc_waferv, &b_tc_waferv);
-    // tree->SetBranchAddress("tc_panel_number", &tc_panel_number, &b_tc_panel_number);
-    // tree->SetBranchAddress("tc_panel_layer", &tc_panel_layer, &b_tc_panel_layer);
     tree->SetBranchAddress("tc_cellu", &tc_cellu, &b_tc_cellu);
     tree->SetBranchAddress("tc_cellv", &tc_cellv, &b_tc_cellv);
     tree->SetBranchAddress("tc_zside", &tc_zside, &b_tc_zside);
-
+    
     std::vector<TH3D*> per_event_plus(3);
     std::vector<TH3D*> per_event_minus(3);
 
@@ -192,8 +194,8 @@ int main(){
     Long64_t nb = 0;
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
       nb = tree->GetEntry(jentry);   
-      if (jentry % 10000 == 0) std::cout << jentry << " / " << nentries << std::endl;;
-      //      if (jentry > 10 )break;
+      if (jentry % 1000 == 0) std::cout << jentry << " / " << nentries << std::endl;;
+      //if (jentry > 10 )break;
       unsigned nWords = 0;
 
       for (int j = 0;j<tc_waferu->size();j++){
@@ -213,12 +215,11 @@ int main(){
 	  }
 	}
 	else{
-	  int eta = tc_cellv->at(j);
-	  int phi = tc_cellu->at(j);
+	  int eta = tc_cellu->at(j);
+	  int phi = tc_cellv->at(j);
 	
 	  std::pair<int,int> etaphi = std::make_pair(eta,phi);
 	  unsigned sector = etaphiMapping(tc_layer->at(j),etaphi);
-	  
 	  if ( tc_zside->at(j) > 0 ){
 	    per_event_plus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
 	  }
@@ -291,7 +292,7 @@ int main(){
     fout.open ("average_tcs_scin.csv");
     for ( int i = 0; i < 5; i++){
       for ( int j = 0; j < 12; j++){
-	for ( int k = 1; k < 53; k++){
+	for ( int k = 37; k < 53; k++){
 
 	  double ntcs = out_tcs_scin->GetBinContent(out_tcs_scin->FindBin(i,j,k));
 	  double words = out_words_scin->GetBinContent(out_words_scin->FindBin(i,j,k));
