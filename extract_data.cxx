@@ -12,177 +12,177 @@
 unsigned tpgRawDataPacketWords(unsigned ntc) {
   unsigned nWords;
   assert(ntc<=48);
-
+  
   if(ntc==0) { // No hits
     nWords=1;
     
   } else if(ntc<8) { // Low occupancy
-    nWords=1 + (3+13*ntc+15)/16;
-
+    nWords=(15 + 3 + 13*ntc + 15)/16;
   } else { // High occupancy
-    nWords=4 + (7*ntc+15)/16;
+    nWords=(15 + 48 + 7*ntc + 15)/16;
   }
-
+  
   return nWords;
 }
 TH3D * convert_tcs_to_words( TH3D * hist ){
-
+  
   TH3D * words = (TH3D*) hist->Clone( TString(hist->GetName()) + "_words" );
   
   for ( int i = 1; i < words->GetNbinsX()+1; i++){
     for ( int j = 1; j < words->GetNbinsY()+1; j++){
       for ( int k = 1; k < words->GetNbinsZ()+1; k++){
-
+	
 	unsigned ntcs = words->GetBinContent(i,j,k);
 	unsigned nwords = tpgRawDataPacketWords(ntcs);
 	words->SetBinContent(i,j,k,nwords);
-       
+	
       }
     }
   }
-
+  
   return words;
   
 }
-  
+
 unsigned uvMapping(unsigned layer, std::pair<int,int> &uv) {
- unsigned sector(0);
- int offset;
-
- if(layer<=28) { // CE-E    
-   if(uv.first>0 && uv.second>=0) return sector;
-
-   offset=0;
-   if(uv.first>=uv.second && uv.second<0) sector=2;
-   else sector=1;
-
- } else if((layer%2)==1) { // CE-H Odd
-   if(uv.first>=0 && uv.second>=0) return sector;
-
-   offset=-1;    
-   if(uv.first>uv.second && uv.second<0) sector=2;
-   else sector=1;
-
- } else { // CE-H Even
-   if(uv.first>=1 && uv.second>=1) return sector;
-
-   offset=1;
-   if(uv.first>=uv.second && uv.second<1) sector=2;
-   else sector=1;
- }
-
- int up,vp;
-
- if(sector==1) {
-   up=uv.second-uv.first;
-   vp=-uv.first+offset;    
-
- } else {
-   up=-uv.second+offset;
-   vp=uv.first-uv.second+offset;
- }
-
- uv.first=up;
- uv.second=vp;
- return sector;
+  unsigned sector(0);
+  int offset;
+  
+  if(layer<=28) { // CE-E    
+    if(uv.first>0 && uv.second>=0) return sector;
+    
+    offset=0;
+    if(uv.first>=uv.second && uv.second<0) sector=2;
+    else sector=1;
+    
+  } else if((layer%2)==1) { // CE-H Odd
+    if(uv.first>=0 && uv.second>=0) return sector;
+    
+    offset=-1;    
+    if(uv.first>uv.second && uv.second<0) sector=2;
+    else sector=1;
+    
+  } else { // CE-H Even
+    if(uv.first>=1 && uv.second>=1) return sector;
+    
+    offset=1;
+    if(uv.first>=uv.second && uv.second<1) sector=2;
+    else sector=1;
+  }
+  
+  int up,vp;
+  
+  if(sector==1) {
+    up=uv.second-uv.first;
+    vp=-uv.first+offset;    
+    
+  } else {
+    up=-uv.second+offset;
+    vp=uv.first-uv.second+offset;
+  }
+  
+  uv.first=up;
+  uv.second=vp;
+  return sector;
 }
 
 //Rotate and convert from cell to tile numbering
 unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
- unsigned sector(0);
-
- if (etaphi.second <= 48){
-   sector = 0;
- }
- else if (etaphi.second > 48 && etaphi.second <= 96){
-   sector = 1;
- }
- else {
-   sector = 2;
- }
-
- int ep;
- int pp;
-
- if(sector==1) {
-   pp=etaphi.second-48;
- } else if(sector==2) {
-   pp=etaphi.second-96;
- }
- else{
-   pp = etaphi.second;
- }
-
- pp = (pp-1)/4; //Phi index 1-12
-
- if ( etaphi.first <= 3 ){
-   ep = 0;
- }
- else if ( etaphi.first <= 9 ){
-   ep = 1;
- }
- else if ( etaphi.first <= 13 ){
-   ep = 2;
- }
- else if ( etaphi.first <= 17 ){
-   ep = 3;
- }
- else{
-   ep = 4;
- }
- 
- etaphi.first=ep;
- etaphi.second=pp;
-
- 
- return sector;
+  unsigned sector(0);
+  
+  if (etaphi.second <= 48){
+    sector = 0;
+  }
+  else if (etaphi.second > 48 && etaphi.second <= 96){
+    sector = 1;
+  }
+  else {
+    sector = 2;
+  }
+  
+  int ep;
+  int pp;
+  
+  if(sector==1) {
+    pp=etaphi.second-48;
+  } else if(sector==2) {
+    pp=etaphi.second-96;
+  }
+  else{
+    pp = etaphi.second;
+  }
+  
+  pp = (pp-1)/4; //Phi index 1-12
+  
+  if ( etaphi.first <= 3 ){
+    ep = 0;
+  }
+  else if ( etaphi.first <= 9 ){
+    ep = 1;
+  }
+  else if ( etaphi.first <= 13 ){
+    ep = 2;
+  }
+  else if ( etaphi.first <= 17 ){
+    ep = 3;
+  }
+  else{
+    ep = 4;
+  }
+  
+  etaphi.first=ep;
+  etaphi.second=pp;
+  
+  
+  return sector;
 }
 
 
 int main(){
-
-    TFile * file = new TFile("data/PU200-V11-TTBAR.root","READ");
-    TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
-    
+  
+  //    TFile * file = new TFile("data/PU200-V11-TTBAR.root","READ");
+  TFile * file = new TFile("data/PU200-QG.root","READ");
+  TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
+  
     // Declaration of leaf types
-    std::vector<int>     *tc_layer = 0;
-    std::vector<int>     *tc_waferu = 0;
-    std::vector<int>     *tc_waferv = 0;
-    std::vector<int>     *tc_cellu = 0;
-    std::vector<int>     *tc_cellv = 0;
-    std::vector<int>     *tc_panel_number = 0;
-    std::vector<int>     *tc_panel_sector = 0;
-    std::vector<int>     *tc_zside = 0;
-    // List of branches
-    TBranch        *b_tc_layer = 0;   
-    TBranch        *b_tc_waferu = 0;   
-    TBranch        *b_tc_waferv = 0;
-    TBranch        *b_tc_cellu = 0;   
-    TBranch        *b_tc_cellv = 0;
-    TBranch        *b_tc_panel_number = 0;   
-    TBranch        *b_tc_panel_layer = 0;
-    TBranch        *b_tc_zside = 0;   
-    
-    tree->SetBranchAddress("tc_layer" , &tc_layer , &b_tc_layer);
-    tree->SetBranchAddress("tc_waferu", &tc_waferu, &b_tc_waferu);
-    tree->SetBranchAddress("tc_waferv", &tc_waferv, &b_tc_waferv);
-    tree->SetBranchAddress("tc_cellu", &tc_cellu, &b_tc_cellu);
-    tree->SetBranchAddress("tc_cellv", &tc_cellv, &b_tc_cellv);
-    tree->SetBranchAddress("tc_zside", &tc_zside, &b_tc_zside);
-    
-    std::vector<TH3D*> per_event_plus(3);
-    std::vector<TH3D*> per_event_minus(3);
-
-    std::vector<TH3D*> per_event_plus_scin(3);
-    std::vector<TH3D*> per_event_minus_scin(3);
-    
-    for (int i = 0;i<per_event_plus.size();i++ ){
-      per_event_plus.at(i) = new TH3D(TString("per_event_plus_hist" + std::to_string(i)),"",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5) ;
-      per_event_minus.at(i) = new TH3D(TString("per_event_minus_hist" + std::to_string(i)),"",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5) ;
-      per_event_plus_scin.at(i) = new TH3D(TString("per_event_plus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5) ;
-      per_event_minus_scin.at(i) = new TH3D(TString("per_event_minus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5) ;
-    }
-
+  std::vector<int>     *tc_layer = 0;
+  std::vector<int>     *tc_waferu = 0;
+  std::vector<int>     *tc_waferv = 0;
+  std::vector<int>     *tc_cellu = 0;
+  std::vector<int>     *tc_cellv = 0;
+  std::vector<int>     *tc_panel_number = 0;
+  std::vector<int>     *tc_panel_sector = 0;
+  std::vector<int>     *tc_zside = 0;
+  // List of branches
+  TBranch        *b_tc_layer = 0;   
+  TBranch        *b_tc_waferu = 0;   
+  TBranch        *b_tc_waferv = 0;
+  TBranch        *b_tc_cellu = 0;   
+  TBranch        *b_tc_cellv = 0;
+  TBranch        *b_tc_panel_number = 0;   
+  TBranch        *b_tc_panel_layer = 0;
+  TBranch        *b_tc_zside = 0;   
+  
+  tree->SetBranchAddress("tc_layer" , &tc_layer , &b_tc_layer);
+  tree->SetBranchAddress("tc_waferu", &tc_waferu, &b_tc_waferu);
+  tree->SetBranchAddress("tc_waferv", &tc_waferv, &b_tc_waferv);
+  tree->SetBranchAddress("tc_cellu", &tc_cellu, &b_tc_cellu);
+  tree->SetBranchAddress("tc_cellv", &tc_cellv, &b_tc_cellv);
+  tree->SetBranchAddress("tc_zside", &tc_zside, &b_tc_zside);
+  
+  std::vector<TH3D*> per_event_plus(3);
+  std::vector<TH3D*> per_event_minus(3);
+  
+  std::vector<TH3D*> per_event_plus_scin(3);
+  std::vector<TH3D*> per_event_minus_scin(3);
+  
+  for (int i = 0;i<per_event_plus.size();i++ ){
+    per_event_plus.at(i) = new TH3D(TString("per_event_plus_hist" + std::to_string(i)),"",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5) ;
+    per_event_minus.at(i) = new TH3D(TString("per_event_minus_hist" + std::to_string(i)),"",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5) ;
+    per_event_plus_scin.at(i) = new TH3D(TString("per_event_plus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5) ;
+    per_event_minus_scin.at(i) = new TH3D(TString("per_event_minus_hist_scin" + std::to_string(i)),"",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5) ;
+  }
+  
     TH3D * out_words = new TH3D("out_words_hist","",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5);
     TH3D * out_tcs = new TH3D("out_tcs_hist","",15,-0.5,14.5,15,-0.5,14.5,52,0.5,52.5);
 
