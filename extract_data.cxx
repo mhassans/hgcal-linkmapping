@@ -14,12 +14,11 @@ unsigned tpgRawDataPacketWords(unsigned ntc) {
   assert(ntc<=48);
   
   if(ntc==0) { // No hits
-    nWords=1;
-    
+    nWords=1;    
   } else if(ntc<8) { // Low occupancy
-    nWords=(15 + 3 + 13*ntc + 15)/16;
+    nWords=(16 + 3 + 13*ntc + 15)/16;
   } else { // High occupancy
-    nWords=(15 + 48 + 7*ntc + 15)/16;
+    nWords=(16 + 48 + 7*ntc + 15)/16;
   }
   
   return nWords;
@@ -34,6 +33,10 @@ TH3D * convert_tcs_to_words( TH3D * hist ){
 	
 	unsigned ntcs = words->GetBinContent(i,j,k);
 	unsigned nwords = tpgRawDataPacketWords(ntcs);
+
+	if (nwords < 0.5){
+	  std::cout << "nwords = " << nwords << std::endl;
+	}
 	words->SetBinContent(i,j,k,nwords);
 	
       }
@@ -140,11 +143,12 @@ unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
 
 int main(){
   
-  //    TFile * file = new TFile("data/PU200-V11-TTBAR.root","READ");
-  TFile * file = new TFile("data/PU200-QG.root","READ");
+  //  TFile * file = new TFile("data/PU200-V11-TTBAR.root","READ");
+  //TFile * file = new TFile("data/PU200-QG.root","READ");
+  TFile * file = new TFile("data/PU200-3.root","READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
   
-    // Declaration of leaf types
+  // Declaration of leaf types
   std::vector<int>     *tc_layer = 0;
   std::vector<int>     *tc_waferu = 0;
   std::vector<int>     *tc_waferv = 0;
@@ -195,8 +199,7 @@ int main(){
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
       nb = tree->GetEntry(jentry);   
       if (jentry % 1000 == 0) std::cout << jentry << " / " << nentries << std::endl;;
-      //if (jentry > 10 )break;
-      unsigned nWords = 0;
+      if (jentry > 10000 )break;
 
       for (int j = 0;j<tc_waferu->size();j++){
 
@@ -213,6 +216,8 @@ int main(){
 	  else if ( tc_zside->at(j) < 0 ){
 	    per_event_minus.at(sector)->Fill(uv.first , uv.second, tc_layer->at(j) );
 	  }
+
+
 	}
 	else{
 	  int eta = tc_cellu->at(j);
@@ -241,6 +246,7 @@ int main(){
 	words_plus_scin.push_back(convert_tcs_to_words(per_event_plus_scin.at(i)));
 	words_minus_scin.push_back(convert_tcs_to_words(per_event_minus_scin.at(i)));	
       }
+            
       //Add plus and minus sides and all rotated histograms together
       for (int i = 0;i<per_event_plus.size();i++ ){
 	out_tcs->Add(per_event_plus.at(i));
@@ -264,7 +270,6 @@ int main(){
       }
       nentries_looped++;
     }
-
 
     out_tcs->Scale(1./double(nentries_looped*6.));
     out_words->Scale(1./double(nentries_looped*6.));
