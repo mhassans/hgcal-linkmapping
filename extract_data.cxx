@@ -148,7 +148,7 @@ int main(){
   TFile * file = new TFile("data/PU200-3.root","READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
   
-  // Declaration of leaf types
+    // Declaration of leaf types
   std::vector<int>     *tc_layer = 0;
   std::vector<int>     *tc_waferu = 0;
   std::vector<int>     *tc_waferv = 0;
@@ -193,6 +193,10 @@ int main(){
     TH3D * out_words_scin = new TH3D("out_words_hist_scin","",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5);
     TH3D * out_tcs_scin = new TH3D("out_tcs_hist_scin","",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5);
 
+    std::ofstream fpaul;
+    fpaul.open ("words_all_v9.txt");
+    
+    
     Int_t nentries = (Int_t)tree->GetEntries();
     Int_t nentries_looped = 0;
     Long64_t nb = 0;
@@ -227,9 +231,11 @@ int main(){
 	  unsigned sector = etaphiMapping(tc_layer->at(j),etaphi);
 	  if ( tc_zside->at(j) > 0 ){
 	    per_event_plus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
+	    //	    std::cout << "PLus s ector  = " << sector << std::endl;
 	  }
 	  else if ( tc_zside->at(j) < 0 ){
 	    per_event_minus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
+	    //	    std::cout << "Minus s ector  = " << sector << std::endl;
 	  }
 	}
 
@@ -246,7 +252,59 @@ int main(){
 	words_plus_scin.push_back(convert_tcs_to_words(per_event_plus_scin.at(i)));
 	words_minus_scin.push_back(convert_tcs_to_words(per_event_minus_scin.at(i)));	
       }
-            
+
+      //Do something for Paul
+
+      // for (int z = 0;z<words_plus_scin.size();z++ ){
+
+      // 	for ( int i = 0; i < 5; i++){
+      // 	  for ( int j = 0; j < 12; j++){
+      // 	    for ( int k = 37; k < 53; k++){	
+      // 	      fpaul << words_plus_scin.at(z)->GetBinContent(words_plus_scin.at(z)->FindBin(i,j,k)) << " ";
+      // 	    }
+      // 	  }
+      // 	}
+
+      // 	fpaul <<  std::endl;
+	
+      // 	for ( int i = 0; i < 5; i++){
+      // 	  for ( int j = 0; j < 12; j++){
+      // 	    for ( int k = 37; k < 53; k++){
+      // 	      fpaul << words_minus_scin.at(z)->GetBinContent(words_minus_scin.at(z)->FindBin(i,j,k)) << " ";
+      // 	    }
+      // 	  }
+      // 	}
+	
+      // 	fpaul <<  std::endl;
+	
+      // }
+      
+
+      for (int z = 0;z<words_plus.size();z++ ){
+
+      	for ( int i = 0; i < 15; i++){
+      	  for ( int j = 0; j < 15; j++){
+      	    for ( int k = 1; k < 53; k++){	
+      	      fpaul << words_plus.at(z)->GetBinContent(words_plus.at(z)->FindBin(i,j,k)) << " ";
+      	    }
+      	  }
+      	}
+
+      	fpaul <<  std::endl;
+	
+      	for ( int i = 0; i < 15; i++){
+      	  for ( int j = 0; j < 15; j++){
+      	    for ( int k = 1; k < 53; k++){
+      	      fpaul << words_minus.at(z)->GetBinContent(words_minus.at(z)->FindBin(i,j,k)) << " ";
+      	    }
+      	  }
+      	}
+	
+      	fpaul <<  std::endl;
+	
+      }
+      
+      
       //Add plus and minus sides and all rotated histograms together
       for (int i = 0;i<per_event_plus.size();i++ ){
 	out_tcs->Add(per_event_plus.at(i));
@@ -270,6 +328,9 @@ int main(){
       }
       nentries_looped++;
     }
+
+    fpaul.close();
+
 
     out_tcs->Scale(1./double(nentries_looped*6.));
     out_words->Scale(1./double(nentries_looped*6.));
