@@ -9,7 +9,7 @@ pd.set_option('display.max_rows', None)
 
 def loadDataFile(MappingFile):
 
-    column_names=['layer', 'u', 'v', 'density', 'nDAQ', 'nTPG','DAQId1','nDAQeLinks1','DAQId2','nDAQeLinks2','TPGId1','nTPGeLinks1','TPGId2','nTPGeLinks2']
+    column_names=['layer', 'u', 'v', 'density', 'shape', 'nDAQ', 'nTPG','DAQId1','nDAQeLinks1','DAQId2','nDAQeLinks2','TPGId1','nTPGeLinks1','TPGId2','nTPGeLinks2']
 
     #Read in data file
     data = pd.read_csv(MappingFile,delim_whitespace=True,names=column_names)
