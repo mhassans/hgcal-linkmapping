@@ -1,6 +1,7 @@
 #include <TROOT.h>
 #include <TChain.h>
 #include <TFile.h>
+#include <TH1.h>
 #include <TH2.h>
 #include <TH3.h>
 #include <TStyle.h>
@@ -140,12 +141,45 @@ unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
   return sector;
 }
 
+std::pair<float,float> getEtaPhi(float x, float y, float z){
+
+  float r = std::sqrt( x*x + y*y  );
+  float phi = std::atan2(y,x);
+  float eta = -std::log(std::tan(std::atan2( r,z)/2));
+  return std::make_pair(eta,phi);
+
+}
+std::pair<float,float> getROverZPhi(float x, float y, float z){
+
+  float r = std::sqrt( x*x + y*y  );
+  float phi = std::atan2(y,x);
+
+  //  if ( phi 
+       //  std::cout << phi << std::endl;
+
+  //  double phi_orig =  (phi * 180 / M_PI);
+  phi = phi + M_PI;
+  if ( phi < (2*M_PI/3) )
+    phi = phi;
+  else if ( phi < (4*M_PI/3) )
+    phi = phi-(2*M_PI/3);
+  else
+    phi = phi-(4*M_PI/3);
+
+  //  double phi_new =  (phi * 180 / M_PI);
+  //  std::cout << phi_orig << " - " << phi_new << std::endl;
+  
+  return std::make_pair(r/z,phi);
+
+}
+
 
 int main(){
-  
-  //  TFile * file = new TFile("data/PU200-V11-TTBAR.root","READ");
+  TH1::SetDefaultSumw2();
+  TH1::AddDirectory(kFALSE);
+  TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
   //TFile * file = new TFile("data/PU200-QG.root","READ");
-  TFile * file = new TFile("data/PU200-3.root","READ");
+  //TFile * file = new TFile("data/PU200-3.root","READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
   
   // Declaration of leaf types
@@ -157,6 +191,9 @@ int main(){
   std::vector<int>     *tc_panel_number = 0;
   std::vector<int>     *tc_panel_sector = 0;
   std::vector<int>     *tc_zside = 0;
+  std::vector<float>     *tc_x = 0;
+  std::vector<float>     *tc_y = 0;
+  std::vector<float>     *tc_z = 0;
   // List of branches
   TBranch        *b_tc_layer = 0;   
   TBranch        *b_tc_waferu = 0;   
@@ -165,14 +202,21 @@ int main(){
   TBranch        *b_tc_cellv = 0;
   TBranch        *b_tc_panel_number = 0;   
   TBranch        *b_tc_panel_layer = 0;
-  TBranch        *b_tc_zside = 0;   
-  
+  TBranch        *b_tc_zside = 0;
+  TBranch        *b_tc_x = 0;
+  TBranch        *b_tc_y = 0;
+  TBranch        *b_tc_z = 0;   
+    
   tree->SetBranchAddress("tc_layer" , &tc_layer , &b_tc_layer);
   tree->SetBranchAddress("tc_waferu", &tc_waferu, &b_tc_waferu);
   tree->SetBranchAddress("tc_waferv", &tc_waferv, &b_tc_waferv);
   tree->SetBranchAddress("tc_cellu", &tc_cellu, &b_tc_cellu);
   tree->SetBranchAddress("tc_cellv", &tc_cellv, &b_tc_cellv);
   tree->SetBranchAddress("tc_zside", &tc_zside, &b_tc_zside);
+
+  tree->SetBranchAddress("tc_x", &tc_x, &b_tc_x);
+  tree->SetBranchAddress("tc_y", &tc_y, &b_tc_y);
+  tree->SetBranchAddress("tc_z", &tc_z, &b_tc_z);
   
   std::vector<TH3D*> per_event_plus(3);
   std::vector<TH3D*> per_event_minus(3);
@@ -193,13 +237,34 @@ int main(){
     TH3D * out_words_scin = new TH3D("out_words_hist_scin","",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5);
     TH3D * out_tcs_scin = new TH3D("out_tcs_hist_scin","",5,-0.5,4.5,12,-0.5,11.5,52,0.5,52.5);
 
+    //R/Z Histograms
+
+    TH1D * ROverZ_Inclusive = new TH1D("ROverZ_Inclusive","",42,0.076,0.58);
+    TH1D * ROverZ_Inclusive_Phi60 = new TH1D("ROverZ_Inclusive_Phi60","",42,0.076,0.58);
+    std::map<std::tuple<int,int,int,int>,TH1D*> ROverZ_per_module;
+    std::map<std::tuple<int,int,int,int>,TH1D*> ROverZ_per_module_Phi60;
+    //Create one for each module (silicon at first)
+    for ( int i = 0; i < 15; i++){//u
+      for ( int j = 0; j < 15; j++){//v
+	for ( int k = 1; k < 53; k++){//layer
+
+	  if ( k < 28 && k%2 == 0 ) continue;
+	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
+	  ROverZ_per_module_Phi60[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_Phi60_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
+	  
+	}
+      }
+    }
+	  
+
+    
     Int_t nentries = (Int_t)tree->GetEntries();
     Int_t nentries_looped = 0;
     Long64_t nb = 0;
     for (Long64_t jentry=0; jentry<nentries;jentry++) {
       nb = tree->GetEntry(jentry);   
-      if (jentry % 1000 == 0) std::cout << jentry << " / " << nentries << std::endl;;
-      if (jentry > 10000 )break;
+      if (jentry % 100 == 0) std::cout << jentry << " / " << nentries << std::endl;;
+      //      if (jentry > 100 )break;
 
       for (int j = 0;j<tc_waferu->size();j++){
 
@@ -218,6 +283,18 @@ int main(){
 	  }
 
 
+	  //Fill Eta Histograms	
+	  std::pair<float,float> eta_phi = getROverZPhi(tc_x->at(j),tc_y->at(j),tc_z->at(j));
+	  
+	  ROverZ_Inclusive->Fill(std::abs(eta_phi.first));
+	  if ( eta_phi.second < M_PI/3 )
+	    ROverZ_Inclusive_Phi60->Fill(std::abs(eta_phi.first));
+
+	  ROverZ_per_module[std::make_tuple(0,uv.first,uv.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
+	  if ( eta_phi.second < M_PI/3 )
+	    ROverZ_per_module_Phi60[std::make_tuple(0,uv.first,uv.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
+	      
+	  
 	}
 	else{
 	  int eta = tc_cellu->at(j);
@@ -233,6 +310,9 @@ int main(){
 	  }
 	}
 
+      
+
+	
       }
 
       std::vector<TH3D*> words_plus;
@@ -276,10 +356,25 @@ int main(){
     out_tcs_scin->Scale(1./double(nentries_looped*6.));
     out_words_scin->Scale(1./double(nentries_looped*6.));
 
-    out_words->SaveAs("hist.root");
+
+    //Save Eta Histograms	
+    TFile * file_out = new TFile("ROverZHistograms.root","RECREATE");
+    file_out->cd();
+    ROverZ_Inclusive->Write();
+    ROverZ_Inclusive_Phi60->Write();
+
+    for (auto& x: ROverZ_per_module) {
+      x.second->Write();
+    }
+    for (auto& x: ROverZ_per_module_Phi60) {
+      x.second->Write();
+    }
+
+    file_out->Close();
+    //out_words->SaveAs("hist.root");
     //Create output csv
     std::ofstream fout;
-    fout.open ("average_tcs.csv");
+    fout.open ("average_tcs_sil.csv");
 
     for ( int i = 0; i < 15; i++){
       for ( int j = 0; j < 15; j++){

@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 from rotate import rotate_to_sector_0
 import matplotlib.pyplot as plt
-
+import ROOT
 
 pd.set_option('display.max_rows', None)
+infiles = []
 
 def loadDataFile(MappingFile):
 
@@ -31,6 +32,35 @@ def getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator):
 
     return data,data_scin
     
+def getModuleHists(HistFile):
+
+    module_hists = []
+    
+    infiles.append(ROOT.TFile.Open(HistFile,"READ"))
+
+    inclusive = {}
+    phi60 = {}
+    
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                inclusive[i,j,k] = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                phi60[i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k)) )
+                
+
+    module_hists.append(inclusive)
+    module_hists.append(phi60)
+            
+    return module_hists
+
 def getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin):
     #Loop over all lpgbts
         
@@ -134,6 +164,44 @@ def check_for_missing_modules(data,data_tcs_passing,data_tcs_passing_scin):
     print (onlycmssw_sil[onlycmssw_sil['nTCs']>0][['layer','u','v']].to_string(index=False))
     print ("Scintillator")
     print (onlycmssw_scin[onlycmssw_scin['nTCs']>0][['layer','u','v']].to_string(index=False))
+
+
+def getlpGBTHists(data, module_hists):
+
+    lpgbt_hists = []
+
+    for phiselection in module_hists:
+
+        temp = []
+
+        for lpgbt in range(0,1600) :
+            lpgbt_found = False
+
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt)),"",42,0.076,0.518);
+            
+            for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
+
+                for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
+                    lpgbt_found = True
+
+                    hist = phiselection[ row['u'], row['v'], row['layer'] ]
+                    
+
+
+                    linkfrac = 'TPGeLinkFrac1'
+                    if ( tpg_index == 'TPGId2' ):
+                        linkfrac = 'TPGeLinkFrac2'
+
+                    lpgbt_hist.Add( hist, row[linkfrac] )
+                        
+
+
+                    
+        
+        lpgbt_hists.append(temp)
+    
+    return lpgbt_hists
+
     
 def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a single lpGBT'):
     fig = plt.figure()
@@ -164,22 +232,33 @@ def main():
     #V11
     CMSSW_Silicon = "data/average_tcs_sil_v11_ttbar_20200305.csv"
     CMSSW_Scintillator = "data/average_tcs_scin_v11_ttbar_20200305.csv"
-
+    CMSSW_ModuleHists = "data/ROverZHistograms.root"
+    
     #V10
     # CMSSW_Silicon = "data/average_tcs_sil_v10_qg_20200305.csv"
     # CMSSW_Scintillator = "data/average_tcs_scin_v10_qg_20200305.csv"
 
     
     Plot_lpGBTLoads = False
-    Plot_ModuleLoads = True
+    Plot_ModuleLoads = False
+    study_mapping = True
     
     
     #Load Data    
     data = loadDataFile(MappingFile) #dataframe
     data_tcs_passing,data_tcs_passing_scin = getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator) #from CMSSW
+    module_hists = getModuleHists(CMSSW_ModuleHists)
+
+    #print (module_hists[0].Integral(1,1), module_hists[0].GetName())
+
 
     #Check for missing modules
     #check_for_missing_modules(data,data_tcs_passing,data_tcs_passing_scin)
+
+    if ( study_mapping ):
+        getlpGBTHists(data, module_hists)
+    
+
 
     if ( Plot_lpGBTLoads ):
         lpgbt_loads_tcs,lpgbt_loads_words,lpgbt_layers = getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin)
