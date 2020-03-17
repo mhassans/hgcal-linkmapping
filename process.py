@@ -35,6 +35,7 @@ def getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator):
 def getModuleHists(HistFile):
 
     module_hists = []
+    inclusive_hists = []
     
     infiles.append(ROOT.TFile.Open(HistFile,"READ"))
 
@@ -46,20 +47,36 @@ def getModuleHists(HistFile):
             for k in range (53):#layer
                 if ( k < 28 and k%2 == 0 ):
                     continue
-                inclusive[i,j,k] = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+                inclusive[0,i,j,k] = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
 
     for i in range (15): #u
         for j in range (15): #v
             for k in range (53):#layer
                 if ( k < 28 and k%2 == 0 ):
                     continue
-                phi60[i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
-                
+                phi60[0,i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
 
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                inclusive[1,i,j,k] = infiles[-1].Get("ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                phi60[1,i,j,k] = infiles[-1].Get("ROverZ_Phi60_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+
+    
+
+    inclusive_hists.append(infiles[-1].Get("ROverZ_Inclusive" ))
+    inclusive_hists.append(infiles[-1].Get("ROverZ_Inclusive_Phi60" ))
+                
     module_hists.append(inclusive)
     module_hists.append(phi60)
             
-    return module_hists
+    return inclusive_hists,module_hists
 
 def getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin):
     #Loop over all lpgbts
@@ -181,12 +198,14 @@ def getlpGBTHists(data, module_hists):
             for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
 
                 for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
-                    if (row['density']==2):#Scintillator
-                        continue
                     lpgbt_found = True
-
-                    hist = phiselection[ row['u'], row['v'], row['layer'] ] # get module hist
                     
+                    if (row['density']==2):#Scintillator
+
+                        hist = phiselection[ 1, row['u'], row['v'], row['layer'] ] # get module hist
+                    else:
+                        hist = phiselection[ 0, row['u'], row['v'], row['layer'] ] # get module hist        
+
                     linkfrac = 'TPGeLinkFrac1'
                     if ( tpg_index == 'TPGId2' ):
                         linkfrac = 'TPGeLinkFrac2'
@@ -207,8 +226,8 @@ def getMinilpGBTGroups(data):
     minigroups_swap = {}
     
     for index, row in data.iterrows():
-        if (row['density']==2):#Scintillator
-            continue
+        # if (row['density']==2):#Scintillator
+        #     continue
         if (row['nTPG']==0): continue
 
         elif (row['nTPG']==1): 
@@ -278,7 +297,7 @@ def getGroupedlpgbtHists(hists,groups):
         for i in sorted(groups.keys()):#loop over groups
 
             #Create one lpgbt histogram per big group
-            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.518);
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.518);
 
             
             for lpgbt in groups[i]:#loop over each lpgbt in the big group
@@ -289,7 +308,23 @@ def getGroupedlpgbtHists(hists,groups):
         grouped_lpgbthists.append(temp)
 
     return grouped_lpgbthists
-    
+
+def calculateChiSquared(inclusive,grouped):
+
+    chi2_total = 0
+
+    for i in range(2):
+
+        for key,hist in grouped[i].items():
+            if (key == 22 ): continue # for now
+            for b in range(1,hist.GetNbinsX()):
+
+                squared_diff = np.power(hist.GetBinContent(b)-inclusive[i].GetBinContent(b)/len(grouped[i]), 2 )   
+
+                chi2_total+=squared_diff
+
+    return chi2_total
+
 def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a single lpGBT'):
     fig = plt.figure()
     binwidth=binwidth
@@ -350,18 +385,21 @@ def main():
 
     
     if ( study_mapping ):
-        module_hists = getModuleHists(CMSSW_ModuleHists)
-        print ("HERE")
+        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
         lpgbt_hists = getlpGBTHists(data, module_hists)
-        print ("HERE")
         minigroups = getMinilpGBTGroups(data)
-        print ("HERE")
         macrogroups = getMacrolpGBTGroups(minigroups)
-        print ("HERE")
         grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,macrogroups)
-        print ("HERE")
-        
 
+        # print ( "mini" )
+        # print ( minigroups) 
+
+        # print ( "macro" )
+        # print ( macrogroups) 
+
+        chi2 = calculateChiSquared(inclusive_hists,grouped_lpgbthists)
+
+        print ("chi2 = ",chi2)
         
         # for key in macrogroups:
         #     print(key, '->', macrogroups[key])
@@ -377,6 +415,9 @@ def main():
         for sector in grouped_lpgbthists:
             for key, value in sector.items():
                 value.Write()
+        for sector in inclusive_hists:
+            sector.Write()
+        
         newfile.Close()
 
 

@@ -256,7 +256,16 @@ int main(){
       }
     }
 	  
+    for ( int i = 0; i < 5; i++){
+      for ( int j = 0; j < 12; j++){
+	for ( int k = 37; k < 53; k++){
 
+	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
+	  ROverZ_per_module_Phi60[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_Phi60_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
+
+	}
+      }
+    }
     
     Int_t nentries = (Int_t)tree->GetEntries();
     Int_t nentries_looped = 0;
@@ -271,6 +280,14 @@ int main(){
 	int u = tc_waferu->at(j);
 	int v = tc_waferv->at(j);
 
+	//Fill Eta Histograms	
+	std::pair<float,float> eta_phi = getROverZPhi(tc_x->at(j),tc_y->at(j),tc_z->at(j));
+	
+	ROverZ_Inclusive->Fill(std::abs(eta_phi.first));
+	if ( eta_phi.second < M_PI/3 )
+	  ROverZ_Inclusive_Phi60->Fill(std::abs(eta_phi.first));
+
+	
 	if ( u > -990 ){//Silicon
 	  std::pair<int,int> uv = std::make_pair(u,v);
 	  unsigned sector = uvMapping(tc_layer->at(j),uv);
@@ -282,13 +299,6 @@ int main(){
 	    per_event_minus.at(sector)->Fill(uv.first , uv.second, tc_layer->at(j) );
 	  }
 
-
-	  //Fill Eta Histograms	
-	  std::pair<float,float> eta_phi = getROverZPhi(tc_x->at(j),tc_y->at(j),tc_z->at(j));
-	  
-	  ROverZ_Inclusive->Fill(std::abs(eta_phi.first));
-	  if ( eta_phi.second < M_PI/3 )
-	    ROverZ_Inclusive_Phi60->Fill(std::abs(eta_phi.first));
 
 	  ROverZ_per_module[std::make_tuple(0,uv.first,uv.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
 	  if ( eta_phi.second < M_PI/3 )
@@ -308,6 +318,14 @@ int main(){
 	  else if ( tc_zside->at(j) < 0 ){
 	    per_event_minus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
 	  }
+
+
+	  ROverZ_per_module[std::make_tuple(1,etaphi.first,etaphi.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
+	  if ( eta_phi.second < M_PI/3 )
+	    ROverZ_per_module_Phi60[std::make_tuple(1,etaphi.first,etaphi.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
+
+
+
 	}
 
       
