@@ -53,7 +53,7 @@ def getModuleHists(HistFile):
             for k in range (53):#layer
                 if ( k < 28 and k%2 == 0 ):
                     continue
-                phi60[i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k)) )
+                phi60[i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
                 
 
     module_hists.append(inclusive)
@@ -95,7 +95,6 @@ def getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin):
                     linkfrac = 'TPGeLinkFrac1'
                     if ( tpg_index == 'TPGId2' ):
                         linkfrac = 'TPGeLinkFrac2'
-                
                     tc_load += row[linkfrac] * ntcs #Add the number of trigger cells from a given module to the lpgbt
                     word_load += row[linkfrac] * nwords #Add the number of trigger cells from a given module to the lpgbt
                     
@@ -170,38 +169,126 @@ def getlpGBTHists(data, module_hists):
 
     lpgbt_hists = []
 
-    for phiselection in module_hists:
+    for p,phiselection in enumerate(module_hists):#inclusive and phi < 60
 
-        temp = []
+        temp = {}
 
         for lpgbt in range(0,1600) :
             lpgbt_found = False
 
-            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt)),"",42,0.076,0.518);
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.518);
             
             for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
 
                 for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
+                    if (row['density']==2):#Scintillator
+                        continue
                     lpgbt_found = True
 
-                    hist = phiselection[ row['u'], row['v'], row['layer'] ]
+                    hist = phiselection[ row['u'], row['v'], row['layer'] ] # get module hist
                     
-
-
                     linkfrac = 'TPGeLinkFrac1'
                     if ( tpg_index == 'TPGId2' ):
                         linkfrac = 'TPGeLinkFrac2'
 
-                    lpgbt_hist.Add( hist, row[linkfrac] )
-                        
+                    lpgbt_hist.Add( hist, row[linkfrac] ) # add module hist with the correct e-link weight
 
+            if lpgbt_found:
+                temp[lpgbt] = lpgbt_hist
 
-                    
-        
         lpgbt_hists.append(temp)
     
     return lpgbt_hists
 
+def getMinilpGBTGroups(data):
+
+    minigroups = {}
+    counter = 0
+    minigroups_swap = {}
+    
+    for index, row in data.iterrows():
+        if (row['density']==2):#Scintillator
+            continue
+        if (row['nTPG']==0): continue
+
+        elif (row['nTPG']==1): 
+            #If there is only one lpgbt attached to the module
+            #Check if it is attached to another module
+            #If it is not create a new minigroup
+            #which is labelled with 'counter'
+            if not (row['TPGId1'] in minigroups):
+
+                minigroups[row['TPGId1']] = counter
+                counter+=1
+
+            
+        elif (row['nTPG']==2): 
+            
+            #If there are two lpgbts attached to the module
+            #The second one is "new"
+
+            if (row['TPGId2'] in minigroups):
+                print ("should not be the case?")
+
+            if (row['TPGId1'] in minigroups):
+                minigroups[row['TPGId2']] = minigroups[row['TPGId1']]
+            else:
+                minigroups[row['TPGId1']] = counter
+                minigroups[row['TPGId2']] = counter
+
+                counter+=1
+
+    for lpgbt, minigroup in minigroups.items(): 
+        if minigroup in minigroups_swap: 
+            minigroups_swap[minigroup].append(lpgbt) 
+        else: 
+            minigroups_swap[minigroup]=[lpgbt] 
+
+    return minigroups_swap
+#    return minigroups
+    
+def getMacrolpGBTGroups(minigroups):
+
+    macrogroups = {}
+    macrogroup_counter = 0
+    maxsize = 72
+
+    for i in sorted(minigroups.keys()):#loop over minigroups
+    #for i in range (len(minigroups)):
+
+        if macrogroup_counter in macrogroups:#if the big group of lpgbts exists
+
+            if ( len(macrogroups[macrogroup_counter]) < (maxsize-len(minigroups[i]) ) ):#if the big group has enough space to accept the next minigroup
+                macrogroups[macrogroup_counter].extend( minigroups[i] )
+            else: #otherwise start a new big group
+                macrogroup_counter+=1
+                macrogroups[macrogroup_counter] = minigroups[i].copy()
+        else:
+            macrogroups[macrogroup_counter] = minigroups[i].copy()
+    return macrogroups
+
+def getGroupedlpgbtHists(hists,groups):
+
+    grouped_lpgbthists = []
+
+    for p,phiselection in enumerate(hists):
+
+        temp = {}
+
+        for i in sorted(groups.keys()):#loop over groups
+
+            #Create one lpgbt histogram per big group
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.518);
+
+            
+            for lpgbt in groups[i]:#loop over each lpgbt in the big group
+                lpgbt_hist.Add( phiselection[lpgbt]  )
+
+            temp[i] = lpgbt_hist
+
+        grouped_lpgbthists.append(temp)
+
+    return grouped_lpgbthists
     
 def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a single lpGBT'):
     fig = plt.figure()
@@ -227,7 +314,7 @@ def plot2D(variable_x,variable_y,savename="hist2D.png",binwidthx=1,binwidthy=1,x
 def main():
 
     #Customisation
-    MappingFile = "data/FeMappingV6.txt"
+    MappingFile = "data/FeMappingV7.txt"
 
     #V11
     CMSSW_Silicon = "data/average_tcs_sil_v11_ttbar_20200305.csv"
@@ -247,7 +334,7 @@ def main():
     #Load Data    
     data = loadDataFile(MappingFile) #dataframe
     data_tcs_passing,data_tcs_passing_scin = getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator) #from CMSSW
-    module_hists = getModuleHists(CMSSW_ModuleHists)
+
 
     #print (module_hists[0].Integral(1,1), module_hists[0].GetName())
 
@@ -255,9 +342,42 @@ def main():
     #Check for missing modules
     #check_for_missing_modules(data,data_tcs_passing,data_tcs_passing_scin)
 
-    if ( study_mapping ):
-        getlpGBTHists(data, module_hists)
+
+
+    # for key in minigroups:
+    #     print(key, '->', minigroups[key])
+        
+
     
+    if ( study_mapping ):
+        module_hists = getModuleHists(CMSSW_ModuleHists)
+        print ("HERE")
+        lpgbt_hists = getlpGBTHists(data, module_hists)
+        print ("HERE")
+        minigroups = getMinilpGBTGroups(data)
+        print ("HERE")
+        macrogroups = getMacrolpGBTGroups(minigroups)
+        print ("HERE")
+        grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,macrogroups)
+        print ("HERE")
+        
+
+        
+        # for key in macrogroups:
+        #     print(key, '->', macrogroups[key])
+            #print(key, ',', len(macrogroups[key]))
+
+            
+        # for key in minigroups:
+        #     print(key, ',', len(minigroups[key]))
+            #print(key, '->', minigroups[key])
+
+            
+        newfile = ROOT.TFile("lpgbt.root","RECREATE")
+        for sector in grouped_lpgbthists:
+            for key, value in sector.items():
+                value.Write()
+        newfile.Close()
 
 
     if ( Plot_lpGBTLoads ):
