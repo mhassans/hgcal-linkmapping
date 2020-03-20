@@ -515,7 +515,7 @@ def main():
         problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = 1554)
 
         best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, 
-                                                      max_attempts = 100000, max_iters = 1, 
+                                                      max_attempts = 100000, max_iters = 10000000, 
                                                       init_state = init_state, random_state = 1)
 
         
