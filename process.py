@@ -7,9 +7,25 @@ import ROOT
 import time
 import itertools
 import random
+import mlrose
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
+from sklearn.metrics import accuracy_score
+
+from bestchi2 import bestsofar
+
+np.set_printoptions(threshold=np.nan)
+
+# Define decay schedule
+schedule = mlrose.ExpDecay()
 
 pd.set_option('display.max_rows', None)
 infiles = []
+chi2_min = 47537985399400000000000
+#chi2_min = 47537985399400000
+combbest = []
 
 def loadDataFile(MappingFile):
 
@@ -266,7 +282,6 @@ def getMinilpGBTGroups(data):
         else: 
             minigroups_swap[minigroup]=[lpgbt] 
 
-#    return minigroups_swap
     return minigroups,minigroups_swap
     
 def getMacrolpGBTGroups(minigroups,combination):
@@ -293,92 +308,18 @@ def getMacrolpGBTGroups(minigroups,combination):
             macrogroups[macrogroup_counter] = minigroups[i].copy()
 
 
-    # #Simplest implementation
-
-    #for i in sorted(minigroups.keys()):#loop over minigroups
-    #for i in range (len(minigroups)):
-    # for i in combination:
-
-    #     if macrogroup_counter in macrogroups:#if the big group of lpgbts exists
-
-    #         if ( len(macrogroups[macrogroup_counter]) < (maxsize-len(minigroups[i]) ) ):#if the big group has enough space to accept the next minigroup
-    #             macrogroups[macrogroup_counter].extend( minigroups[i] )
-    #         else: #otherwise start a new big group
-    #             macrogroup_counter+=1
-    #             macrogroups[macrogroup_counter] = minigroups[i].copy()
-    #     else:
-    #         macrogroups[macrogroup_counter] = minigroups[i].copy()
-
-    # print (len(macrogroups))
-    # print (len(macrogroups[macrogroup_counter]))
-
-            
-
-    #Optimised implementation
-    #list(itertools.chain.from_iterable(itertools.combinations(minigroups.keys(), 25)))
-
-    #print(list(itertools.permutations(minigroups.keys())))
-
-
-        
-        
-    #a = minigroups.keys()
-    #    b = [list(c) for i in range(len(a)-2,len(a)) for c in itertools.combinations(a, i+1)]
-
-    # full_set = set(a)
-    # for partition in itertools.combinations(full_set,30):
-    #     remainder = list(full_set - set(partition))
-    #     print (partition, remainder)
-    
-    # b = [list(c) for i in range(30,31) for c in itertools.combinations(a, i+1)]
-    # print (b)
-    # check = []
-    # for elem in b:
-    #     remainder = [x for x in a if x not in elem]
-    #     if remainder not in check and remainder:
-    #         print ( '{} {}'.format(elem, remainder) )
-    #         check.append(elem)
-
-
-            
-    # for l in range (3)
-    # mgl = list(itertools.chain.from_iterable(itertools.combinations(minigroups.keys(), 3)))
-    # print mgl
-    #list(
-
-
-
     return macrogroups
 
 def getBundles(minigroups,minigroups_swap,combination):
 
+    bundles = np.array_split(combination,24)
 
-    bundles = []
-
-    #macrogroup_counter = 0
-    #maxsize = 67
-
-    #Simplest implementation
-    # for i in sorted(minigroups.keys()):#loop over minigroups
-    # #for i in range (len(minigroups)):
-
-    #     if macrogroup_counter in bundles:#if the big group of lpgbts exists
-
-    #         if ( len(bundles[macrogroup_counter]) < (maxsize-len(minigroups[i]) ) ):#if the big group has enough space to accept the next minigroup
-    #             bundles[macrogroup_counter].extend( minigroups[i] )
-    #         else: #otherwise start a new big group
-    #             break#temporary
-    #             macrogroup_counter+=1
-    #             bundles[macrogroup_counter] = minigroups[i].copy()
-    #     else:
-    #         bundles[macrogroup_counter] = minigroups[i].copy()
-
-    bundles = list(combination)
-
-    for lpgbt in minigroups_swap[minigroups[bundles[-1]]]:
-        if not lpgbt in bundles[-5:]:
-            bundles.append(lpgbt)
+    for bundle in bundles:
+        for lpgbt in minigroups_swap[minigroups[bundle[-1]]]:
+            if not lpgbt in bundle[-5:]:
+                np.append(bundle,lpgbt)
     #Check the last lpgbt of the bundle, does it belong to a mini-group?    
+
     
     return bundles
             
@@ -392,7 +333,8 @@ def getGroupedlpgbtHists(hists,groups):
         #temp = {}
         temp_list = {}
 
-        for i in sorted(groups.keys()):#loop over groups
+        #for i in sorted(groups.keys()):#loop over groups
+        for i in range(len(groups)):#loop over groups
 
             #Create one lpgbt histogram per big group
             lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.518);
@@ -404,7 +346,7 @@ def getGroupedlpgbtHists(hists,groups):
             for b in range(1,lpgbt_hist.GetNbinsX()+1): 
                 lpgbt_hist_list.append(lpgbt_hist.GetBinContent(b))
 
-            #temp[i] = lpgbt_hist
+            #temp_list[i] = lpgbt_hist
             temp_list[i] = lpgbt_hist_list
             
 
@@ -414,14 +356,13 @@ def getGroupedlpgbtHists(hists,groups):
     return grouped_lpgbthists_list
 
 
-def getGroupedlpgbtHists2(hists,groups):
+def getGroupedlpgbtHistsOneBundle(hists,groups):
 
     grouped_lpgbthists = []
     grouped_lpgbthists_list = []
 
     for p,phiselection in enumerate(hists):
 
-        #temp = {}
         lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_grouped_" + str(p)),"",42,0.076,0.518);
         lpgbt_hist_list = [] 
             
@@ -444,13 +385,8 @@ def calculateChiSquared(inclusive,grouped):
     for i in range(2):
 
         for key,hist in grouped[i].items():
-            #if (key == 22 ): continue # for now
-            #for b in range(1,hist.GetNbinsX()+1):
+
             for b in range(len(hist)):
-
-                #squared_diff = np.power(hist.GetBinContent(b)-inclusive[i].GetBinContent(b)/len(grouped[i]), 2 )
-
-                #squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/len(grouped[i]), 2 )
 
                 squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )   
 
@@ -458,23 +394,16 @@ def calculateChiSquared(inclusive,grouped):
 
     return chi2_total
 
-def calculateChiSquared2(inclusive,grouped):
+def calculateChiSquaredOneBundle(inclusive,grouped):
 
     chi2_total = 0
 
     for i,hist in enumerate(grouped):
 
-        #for key,hist in grouped[i].items():
-            #if (key == 22 ): continue # for now
-            #for b in range(1,hist.GetNbinsX()+1):
         for b in range(len(hist)):
 
-            #squared_diff = np.power(hist.GetBinContent(b)-inclusive[i].GetBinContent(b)/len(grouped[i]), 2 )
-            
-            #squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/len(grouped[i]), 2 )
             squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )   
-            #print ( b, " - " , hist[b], " - " , inclusive[i].GetBinContent(b+1)/24 )
-            #print (squared_diff)
+
             chi2_total+=squared_diff
 
     return chi2_total
@@ -551,80 +480,49 @@ def main():
         lpgbt_hists = getlpGBTHists(data, module_hists)
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
+        def mapping_max(state):
+            global chi2_min
+            global combbest
+
+            chi2 = 0
+
+            macrogroups = getBundles(minigroups,minigroups_swap,state)
+            grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,macrogroups)
+            chi2 = calculateChiSquared(inclusive_hists,grouped_lpgbthists)
+
+            # newfile = ROOT.TFile("lpgbt_2.root","RECREATE")
+            # for sector in grouped_lpgbthists:
+            #     for key, value in sector.items():
+            #         value.Write()
+            #     for sector in inclusive_hists:
+            #         sector.Write()
         
-        # for key, value in minigroups.items():
-        #     #print (len(value))
-        #     print (value)
-        #print ("ln pf minig = " , len(minigroups))
-        #combinations = generate_groups(list(minigroups.keys()), 24)
-        #itertools.permutations(minigroups.keys())
-        #combinations = itertools.combinations(minigroups.keys(),20)
-
-        #combinations = itertools.combinations(list(range(1,1554)),67)
+            # newfile.Close()
 
 
-        # # for i in range (len(sublists)):
-        # #     if (sum(map(len, sublists[0:i])) > 4):
-        # #         print (sublists[i])
-        # #         break
-
-        # # sumlist = 0
-        # # breakpoint = 0
-        # # for i in combinations:
-        # #     sumlist+=len(minigroups[i])
-        # #     if sumlist>69:
-        # #         breakpoint=i-1
-        # #         break
-        
-        chi2_min = 47537985399400000
-        
-        #for c,comb in enumerate(combinations):
-        for c in range(1,10000000000):
-        
-            comb = random.sample(list(range(1,1554)),67)
-
-        # #            start = time.time()
-        # comb = []
-        # #macrogroups = getMacrolpGBTGroups(minigroups,comb)
-
-            macrogroups = getBundles(minigroups,minigroups_swap,comb)
-            #print (macrogroups)
-            #grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,macrogroups)
-            grouped_lpgbthists = getGroupedlpgbtHists2(lpgbt_hists,macrogroups)
-            chi2 = calculateChiSquared2(inclusive_hists,grouped_lpgbthists)
-            #chi2 = calculateChiSquared(inclusive_hists,grouped_lpgbthists)
-            if chi2<chi2_min:
+            if (chi2<chi2_min):
                 chi2_min = chi2
-                combbest = comb
-                print ("new min!",chi2_min)
-                print (combbest)
-
-            if ( c % 100 == 0 ):
+                combbest = np.copy(state)
                 print (chi2_min)
-
+                print (repr(combbest))
                 
-        # print ("chi2 = ",chi2)
-        # end = time.time()
-        # print(end - start)
-        
-        # for key in macrogroups:
-        #     print(key, '->', macrogroups[key])
-            #print(key, ',', len(macrogroups[key]))
+            return chi2
 
-            
-        # for key in minigroups:
-        #     print(key, ',', len(minigroups[key]))
-            #print(key, '->', minigroups[key])
+        init_state = bestsofar
+        #print (init_state)
+        fitness_cust = mlrose.CustomFitness(mapping_max)
+        # Define optimization problem object
+        problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = 1554)
 
-            
-        # newfile = ROOT.TFile("lpgbt.root","RECREATE")
-        # for sector in grouped_lpgbthists:
-        #     for key, value in sector.items():
-        #         value.Write()
-        # for sector in inclusive_hists:
-        #     sector.Write()
+        best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, 
+                                                      max_attempts = 100000, max_iters = 1, 
+                                                      init_state = init_state, random_state = 1)
+
         
-        # newfile.Close()
+        #print (best_state)
+         #2996258530
+
+         #253347326517
 
 
     if ( Plot_lpGBTLoads ):
