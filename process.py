@@ -212,7 +212,7 @@ def getlpGBTHists(data, module_hists):
         for lpgbt in range(0,1600) :
             lpgbt_found = False
 
-            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.518);
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.58);
             
             for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
 
@@ -337,7 +337,7 @@ def getGroupedlpgbtHists(hists,groups,root=False):
         for i in range(len(groups)):#loop over groups
 
             #Create one lpgbt histogram per big group
-            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.518);
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
             lpgbt_hist_list = [] 
             
             for lpgbt in groups[i]:#loop over each lpgbt in the big group
@@ -488,7 +488,7 @@ def main():
         #Print bestsofar in root file
         # mg = getBundles(minigroups,minigroups_swap,bestsofar)
         # gh = getGroupedlpgbtHists(lpgbt_hists,mg,root=True)
-        # newfile = ROOT.TFile("lpgbt_5.root","RECREATE")
+        # newfile = ROOT.TFile("lpgbt_6.root","RECREATE")
         # for sector in gh:
         #     for key, value in sector.items():
         #         value.Write()

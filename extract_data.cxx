@@ -249,8 +249,8 @@ int main(){
 	for ( int k = 1; k < 53; k++){//layer
 
 	  if ( k < 28 && k%2 == 0 ) continue;
-	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
-	  ROverZ_per_module_Phi60[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_Phi60_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
+	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58);
+	  ROverZ_per_module_Phi60[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_Phi60_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58);
 	  
 	}
       }
@@ -260,8 +260,8 @@ int main(){
       for ( int j = 0; j < 12; j++){
 	for ( int k = 37; k < 53; k++){
 
-	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
-	  ROverZ_per_module_Phi60[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_Phi60_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.518);
+	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58);
+	  ROverZ_per_module_Phi60[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_Phi60_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58);
 
 	}
       }
