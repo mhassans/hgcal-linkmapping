@@ -323,7 +323,7 @@ def getBundles(minigroups,minigroups_swap,combination):
     
     return bundles
             
-def getGroupedlpgbtHists(hists,groups):
+def getGroupedlpgbtHists(hists,groups,root=False):
 
     grouped_lpgbthists = []
     grouped_lpgbthists_list = []
@@ -347,7 +347,10 @@ def getGroupedlpgbtHists(hists,groups):
                 lpgbt_hist_list.append(lpgbt_hist.GetBinContent(b))
 
             #temp_list[i] = lpgbt_hist
-            temp_list[i] = lpgbt_hist_list
+            if (root):
+                temp_list[i] = lpgbt_hist
+            else:
+                temp_list[i] = lpgbt_hist_list
             
 
         #grouped_lpgbthists.append(temp)
@@ -480,6 +483,22 @@ def main():
         lpgbt_hists = getlpGBTHists(data, module_hists)
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
+
+        
+        #Print bestsofar in root file
+        # mg = getBundles(minigroups,minigroups_swap,bestsofar)
+        # gh = getGroupedlpgbtHists(lpgbt_hists,mg,root=True)
+        # newfile = ROOT.TFile("lpgbt_5.root","RECREATE")
+        # for sector in gh:
+        #     for key, value in sector.items():
+        #         value.Write()
+        # for sector in inclusive_hists:
+        #     sector.Scale(1./24.)
+        #     sector.Write()
+        
+        # newfile.Close()
+        
+        
         def mapping_max(state):
             global chi2_min
             global combbest
@@ -490,14 +509,6 @@ def main():
             grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,macrogroups)
             chi2 = calculateChiSquared(inclusive_hists,grouped_lpgbthists)
 
-            # newfile = ROOT.TFile("lpgbt_2.root","RECREATE")
-            # for sector in grouped_lpgbthists:
-            #     for key, value in sector.items():
-            #         value.Write()
-            #     for sector in inclusive_hists:
-            #         sector.Write()
-        
-            # newfile.Close()
 
 
             if (chi2<chi2_min):
@@ -514,9 +525,11 @@ def main():
         # Define optimization problem object
         problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = 1554)
 
-        best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, 
-                                                      max_attempts = 100000, max_iters = 10000000, 
-                                                      init_state = init_state, random_state = 1)
+        best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=1)
+        #best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=10, max_iters=10000, curve=False, random_state=1)
+        # best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, 
+        #                                               max_attempts = 100000, max_iters = 10000000, 
+        #                                               init_state = init_state, random_state = 1)
 
         
         #print (best_state)
