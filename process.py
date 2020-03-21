@@ -8,6 +8,7 @@ import time
 import itertools
 import random
 import mlrose
+import sys
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -16,7 +17,7 @@ from sklearn.metrics import accuracy_score
 
 from bestchi2 import bestsofar
 
-np.set_printoptions(threshold=np.nan)
+np.set_printoptions(threshold=sys.maxsize)
 
 # Define decay schedule
 schedule = mlrose.ExpDecay()
