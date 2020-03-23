@@ -352,7 +352,7 @@ def getGroupedlpgbtHists(hists,groups,root=False):
                 temp_list[i] = lpgbt_hist
             else:
                 temp_list[i] = lpgbt_hist_list
-            
+
 
         #grouped_lpgbthists.append(temp)
         grouped_lpgbthists_list.append(temp_list)
@@ -487,17 +487,17 @@ def main():
 
         
         #Print bestsofar in root file
-        # mg = getBundles(minigroups,minigroups_swap,bestsofar)
-        # gh = getGroupedlpgbtHists(lpgbt_hists,mg,root=True)
-        # newfile = ROOT.TFile("lpgbt_6.root","RECREATE")
-        # for sector in gh:
-        #     for key, value in sector.items():
-        #         value.Write()
-        # for sector in inclusive_hists:
-        #     sector.Scale(1./24.)
-        #     sector.Write()
+        mg = getBundles(minigroups,minigroups_swap,bestsofar)
+        gh = getGroupedlpgbtHists(lpgbt_hists,mg,root=True)
+        newfile = ROOT.TFile("lpgbt_8.root","RECREATE")
+        for sector in gh:
+            for key, value in sector.items():
+                value.Write()
+        for sector in inclusive_hists:
+            sector.Scale(1./24.)
+            sector.Write()
         
-        # newfile.Close()
+        newfile.Close()
         
         
         def mapping_max(state):
@@ -526,7 +526,7 @@ def main():
         # Define optimization problem object
         problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = 1554)
 
-        best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=1)
+        #best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=1)
         #best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=10, max_iters=10000, curve=False, random_state=1)
         # best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, 
         #                                               max_attempts = 100000, max_iters = 10000000, 
@@ -560,4 +560,4 @@ def main():
 
 
     
-main()
+#main()
