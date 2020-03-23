@@ -154,10 +154,6 @@ std::pair<float,float> getROverZPhi(float x, float y, float z){
   float r = std::sqrt( x*x + y*y  );
   float phi = std::atan2(y,x);
 
-  //  if ( phi 
-       //  std::cout << phi << std::endl;
-
-  //  double phi_orig =  (phi * 180 / M_PI);
   phi = phi + M_PI;
   if ( phi < (2*M_PI/3) )
     phi = phi;
@@ -166,9 +162,6 @@ std::pair<float,float> getROverZPhi(float x, float y, float z){
   else
     phi = phi-(4*M_PI/3);
 
-  //  double phi_new =  (phi * 180 / M_PI);
-  //  std::cout << phi_orig << " - " << phi_new << std::endl;
-  
   return std::make_pair(r/z,phi);
 
 }
