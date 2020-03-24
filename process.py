@@ -266,7 +266,6 @@ def getBundles(minigroups_swap,combination):
 
     for bundle in bundles:
         weight_bundles = np.array([ len(minigroups_swap[x])  for x in bundle ])
-        print ( weight_bundles.sum() )
         if (weight_bundles.sum() > 72 ):
             print ( "Error: more than 72 lpgbts in bundle")
 
