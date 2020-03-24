@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+import sys
+sys.path.insert(1, './externals')
 import ROOT
 import numpy as np
-import mlrose
+import mlrose_mod as mlrose
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -128,7 +130,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         #     print (len(bundle))
         #     weights = np.array([ len(minigroups_swap[x])  for x in bundle ])
         #     print (weights.sum())
-        bundled_hists = getBundledlpgbtHists(lpgbt_hists,bundles,root=OutputRootFile)
+        bundled_hists = getBundledlpgbtHists(minigroup_hists,bundles,root=OutputRootFile)
         newfile = ROOT.TFile("lpgbt_9.root","RECREATE")
         for sector in bundled_hists:
             for key, value in sector.items():
@@ -137,6 +139,17 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
             sector.Scale(1./24.)
             sector.Write()
         newfile.Close()
+
+        print ("List of Bundles:")
+        for b,bundle in enumerate(bundles):
+            print ("" )
+            print ("bundle" + str(b) )
+            for minigroup in bundle:
+                #print (minigroup)
+                lpgbts = minigroups_swap[minigroup]
+                for lpgbt in lpgbts:
+                    print (str(lpgbt) + ", "  , end = '')
+
     else:
         if (algorithm == "random_hill_climb"):
             best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=1)
@@ -167,7 +180,8 @@ def main():
     CMSSW_Silicon_v10 = "data/average_tcs_sil_v10_qg_20200305.csv"
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="random")
+    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="bestsofar")
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="random")
 
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
