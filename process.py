@@ -251,14 +251,29 @@ def getMinilpGBTGroups(data):
 
     return minigroups,minigroups_swap
     
-def getBundles(minigroups,minigroups_swap,combination):
+#def getBundles(minigroups,minigroups_swap,combination):
+def getBundles(minigroups_swap,combination):
 
-    bundles = np.array_split(combination,24)
+    #Need to divide the minigroups into 24 groups taking into account their different size
+    nBundles = 24
+    #The weights are the numbers of lpgbts in each mini-groups
+    weights = np.array([ len(minigroups_swap[x])  for x in combination ])
+    cumulative_arr = weights.cumsum() / weights.sum()
+    #Calculate the indices where to perform the split
+    idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+
+    bundles = np.array_split(combination,idx)
 
     for bundle in bundles:
-        for lpgbt in minigroups_swap[minigroups[bundle[-1]]]:
-            if not lpgbt in bundle[-5:]:
-                np.append(bundle,lpgbt)
+        weight_bundles = np.array([ len(minigroups_swap[x])  for x in bundle ])
+        print ( weight_bundles.sum() )
+        if (weight_bundles.sum() > 72 ):
+            print ( "Error: more than 72 lpgbts in bundle")
+
+    # for bundle in bundles:
+    #     for lpgbt in minigroups_swap[minigroups[bundle[-1]]]:
+    #         if not lpgbt in bundle[-5:]:
+    #             np.append(bundle,lpgbt)
     #Check the last lpgbt of the bundle, does it belong to a mini-group?    
 
     

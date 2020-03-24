@@ -68,7 +68,7 @@ def check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
 
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="best_so_far"):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -77,15 +77,16 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
-
+    
     def mapping_max(state):
         global chi2_min
         global combbest
 
         chi2 = 0
 
-        macrogroups = getBundles(minigroups,minigroups_swap,state)
-        grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,macrogroups)
+        #bundles = getBundles(minigroups,minigroups_swap,state)
+        bundles = getBundles(minigroups_swap,state)
+        grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,bundles)
         chi2 = calculateChiSquared(inclusive_hists,grouped_lpgbthists)
 
         if (chi2<chi2_min):
@@ -97,6 +98,9 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         return chi2
     
     init_state = bestsofar
+    if (initial_state == "random"):
+        init_state = np.arange(len(minigroups_swap))
+        np.random.shuffle(init_state)
     fitness_cust = mlrose.CustomFitness(mapping_max)
     # Define optimization problem object
     problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = 1554)
@@ -105,8 +109,23 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
     schedule = mlrose.ExpDecay()
 
     if ( OutputRootFile ):
-        #Save best combination so far into a root file    
-        bundles = getBundles(minigroups,minigroups_swap,bestsofar)
+        #Save best combination so far into a root file
+        #bundles = getBundles(minigroups,minigroups_swap,init_state)
+        bundles = getBundles(minigroups_swap,init_state)
+
+        # print ("init_state")
+        # print (init_state)
+
+        # print ("minigroups_swap")
+        # print (minigroups_swap)
+        
+        # print ("BUNDLES")
+        # print (bundles)
+
+        # for bundle in bundles:
+        #     print (len(bundle))
+        #     weights = np.array([ len(minigroups_swap[x])  for x in bundle ])
+        #     print (weights.sum())
         grouped_hists = getGroupedlpgbtHists(lpgbt_hists,bundles,root=OutputRootFile)
         newfile = ROOT.TFile("lpgbt_8.root","RECREATE")
         for sector in grouped_hists:
@@ -146,7 +165,7 @@ def main():
     CMSSW_Silicon_v10 = "data/average_tcs_sil_v10_qg_20200305.csv"
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False)
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="random")
 
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
