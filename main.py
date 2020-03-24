@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists,getlpGBTHists,getMinilpGBTGroups,getBundles,getGroupedlpgbtHists,calculateChiSquared
+from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles,getBundledlpgbtHists,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
@@ -77,6 +77,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
+    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+
     
     def mapping_max(state):
         global chi2_min
@@ -86,8 +88,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
 
         #bundles = getBundles(minigroups,minigroups_swap,state)
         bundles = getBundles(minigroups_swap,state)
-        grouped_lpgbthists = getGroupedlpgbtHists(lpgbt_hists,bundles)
-        chi2 = calculateChiSquared(inclusive_hists,grouped_lpgbthists)
+        bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
+        chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
         if (chi2<chi2_min):
             chi2_min = chi2
@@ -126,9 +128,9 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         #     print (len(bundle))
         #     weights = np.array([ len(minigroups_swap[x])  for x in bundle ])
         #     print (weights.sum())
-        grouped_hists = getGroupedlpgbtHists(lpgbt_hists,bundles,root=OutputRootFile)
-        newfile = ROOT.TFile("lpgbt_8.root","RECREATE")
-        for sector in grouped_hists:
+        bundled_hists = getBundledlpgbtHists(lpgbt_hists,bundles,root=OutputRootFile)
+        newfile = ROOT.TFile("lpgbt_9.root","RECREATE")
+        for sector in bundled_hists:
             for key, value in sector.items():
                 value.Write()
         for sector in inclusive_hists:

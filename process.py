@@ -168,6 +168,31 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
+def getMiniGroupHists(module_hists, minigroups_swap):
+    
+    minigroup_hists = []
+
+    minigroup_hists_inclusive = {}
+    minigroup_hists_phi60 = {}
+
+    for minigroup, lpgbts in minigroups_swap.items():
+        
+        inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
+        phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
+
+        for lpgbt in lpgbts:
+
+            inclusive.Add( module_hists[0][lpgbt] )
+            phi60.Add( module_hists[1][lpgbt] )
+        
+        minigroup_hists_inclusive[minigroup] = inclusive
+        minigroup_hists_phi60[minigroup] = phi60
+
+    minigroup_hists.append(minigroup_hists_inclusive)
+    minigroup_hists.append(minigroup_hists_phi60)
+
+    return minigroup_hists
+        
 def getlpGBTHists(data, module_hists):
 
     lpgbt_hists = []
@@ -278,24 +303,24 @@ def getBundles(minigroups_swap,combination):
     
     return bundles
             
-def getGroupedlpgbtHists(hists,groups,root=False):
+def getBundledlpgbtHists(minigroup_hists,bundles,root=False):
 
-    grouped_lpgbthists = []
-    grouped_lpgbthists_list = []
+    bundled_lpgbthists = []
+    bundled_lpgbthists_list = []
 
-    for p,phiselection in enumerate(hists):
+    for p,phiselection in enumerate(minigroup_hists):
 
         #temp = {}
         temp_list = {}
 
-        for i in range(len(groups)):#loop over groups
+        for i in range(len(bundles)):#loop over bundles
 
-            #Create one lpgbt histogram per big group
-            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_grouped_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
+            #Create one lpgbt histogram per bundle
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
             lpgbt_hist_list = [] 
             
-            for lpgbt in groups[i]:#loop over each lpgbt in the big group
-                lpgbt_hist.Add( phiselection[lpgbt]  )
+            for minigroup in bundles[i]:#loop over each lpgbt in the bundle
+                lpgbt_hist.Add( phiselection[minigroup]  )
 
             for b in range(1,lpgbt_hist.GetNbinsX()+1): 
                 lpgbt_hist_list.append(lpgbt_hist.GetBinContent(b))
@@ -306,11 +331,9 @@ def getGroupedlpgbtHists(hists,groups,root=False):
             else:
                 temp_list[i] = lpgbt_hist_list
 
+        bundled_lpgbthists_list.append(temp_list)
 
-        #grouped_lpgbthists.append(temp)
-        grouped_lpgbthists_list.append(temp_list)
-
-    return grouped_lpgbthists_list
+    return bundled_lpgbthists_list
 
 
 def calculateChiSquared(inclusive,grouped):
