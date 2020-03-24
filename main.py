@@ -165,7 +165,7 @@ def main():
     CMSSW_Silicon_v10 = "data/average_tcs_sil_v10_qg_20200305.csv"
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="random")
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="rand")
 
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
