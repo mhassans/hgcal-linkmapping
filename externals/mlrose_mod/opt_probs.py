@@ -4,6 +4,7 @@
 # License: BSD 3 clause
 
 import numpy as np
+import math
 from sklearn.metrics import mutual_info_score
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree, depth_first_tree
@@ -503,8 +504,33 @@ class DiscreteOpt(OptProb):
         """
         neighbor = np.copy(self.state)
         node1, node2 = np.random.choice(np.arange(self.length),
-                                        size=2, replace=False)
+                                         size=2, replace=False)
+        
+        neighbor[node1] = self.state[node2]
+        neighbor[node2] = self.state[node1]
 
+        return neighbor
+
+    def random_neighbor_swap_probability(self):
+        """Return random neighbor of current state vector.
+
+        Returns
+        -------
+        neighbor: array
+            State vector of random neighbor.
+        """
+        neighbor = np.copy(self.state)
+        node1 = np.random.choice(np.arange(self.length),
+                                        size=1, replace=False)
+
+        probs = []
+        for i in range (self.length):
+            probs.append(math.sqrt(abs(i-node1)))
+        norm = [x / sum(probs) for x in probs]
+        node2 = np.random.choice(np.arange(self.length),size=1,p=norm)
+        # node1, node2 = np.random.choice(np.arange(self.length),
+        #                                 size=2, replace=False)
+        
         neighbor[node1] = self.state[node2]
         neighbor[node2] = self.state[node1]
 
