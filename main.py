@@ -4,13 +4,14 @@ sys.path.insert(1, './externals')
 import ROOT
 import numpy as np
 import mlrose_mod as mlrose
+import time
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles,getBundledlpgbtHists,calculateChiSquared
+from process import getModuleHists,getlpGBTHists,getMiniGroupHistsPY,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsPY,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
@@ -79,7 +80,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
-    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+#    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+    minigroup_hists = getMiniGroupHistsPY(lpgbt_hists,minigroups_swap)
 
     
     def mapping_max(state):
@@ -88,9 +90,16 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
 
         chi2 = 0
 
+        
+
         #bundles = getBundles(minigroups,minigroups_swap,state)
         bundles = getBundles(minigroups_swap,state)
-        bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
+        #start = time.time()
+        #bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
+        bundled_lpgbthists = getBundledlpgbtHistsPY(minigroup_hists,bundles)
+        #start2 = time.time()
+        #print("2",start2 - start)
+
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
         typicalchi2 = 600000000000

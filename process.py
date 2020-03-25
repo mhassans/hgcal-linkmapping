@@ -9,6 +9,7 @@ import itertools
 import random
 #import mlrose
 import sys
+from root_numpy import hist2array
 
 np.set_printoptions(threshold=sys.maxsize)
 pd.set_option('display.max_rows', None)
@@ -192,7 +193,36 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap):
     minigroup_hists.append(minigroup_hists_phi60)
 
     return minigroup_hists
+
+def getMiniGroupHistsPY(lpgbt_hists, minigroups_swap):
+    
+    minigroup_hists = []
+
+    minigroup_hists_inclusive = {}
+    minigroup_hists_phi60 = {}
+
+    for minigroup, lpgbts in minigroups_swap.items():
         
+        inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
+        phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
+
+        for lpgbt in lpgbts:
+
+            inclusive.Add( lpgbt_hists[0][lpgbt] )
+            phi60.Add( lpgbt_hists[1][lpgbt] )
+
+            
+        inclusive_array = hist2array(inclusive)
+        phi60_array = hist2array(phi60) 
+            
+        minigroup_hists_inclusive[minigroup] = inclusive_array
+        minigroup_hists_phi60[minigroup] = phi60_array
+
+    minigroup_hists.append(minigroup_hists_inclusive)
+    minigroup_hists.append(minigroup_hists_phi60)
+
+    return minigroup_hists
+
 def getlpGBTHists(data, module_hists):
 
     lpgbt_hists = []
@@ -323,6 +353,35 @@ def getBundledlpgbtHists(minigroup_hists,bundles,root=False):
                 temp_list[i] = lpgbt_hist
             else:
                 temp_list[i] = lpgbt_hist_list
+
+        bundled_lpgbthists_list.append(temp_list)
+
+    return bundled_lpgbthists_list
+
+
+def getBundledlpgbtHistsPY(minigroup_hists,bundles,root=False):
+
+    bundled_lpgbthists = []
+    bundled_lpgbthists_list = []
+
+    for p,phiselection in enumerate(minigroup_hists):
+
+        #temp = {}
+        temp_list = {}
+
+        for i in range(len(bundles)):#loop over bundles
+
+            #Create one lpgbt histogram per bundle
+            ##lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
+            lpgbt_hist_list = np.zeros(42) 
+            
+            for minigroup in bundles[i]:#loop over each lpgbt in the bundle
+                lpgbt_hist_list+= phiselection[minigroup] 
+
+            # for b in range(1,lpgbt_hist.GetNbinsX()+1): 
+            #     lpgbt_hist_list.append(lpgbt_hist.GetBinContent(b))
+
+            temp_list[i] = lpgbt_hist_list
 
         bundled_lpgbthists_list.append(temp_list)
 

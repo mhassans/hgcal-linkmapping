@@ -9,6 +9,7 @@ from sklearn.metrics import mutual_info_score
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree, depth_first_tree
 from .fitness import TravellingSales
+import time
 
 class OptProb:
     """Base class for optimisation problems.
@@ -513,6 +514,7 @@ class DiscreteOpt(OptProb):
         neighbor: array
             State vector of random neighbor.
         """
+
         neighbor = np.copy(self.state)
 
         bundles = self.getBundles(neighbor)
@@ -529,12 +531,12 @@ class DiscreteOpt(OptProb):
         bundles[bundle2][node2] = temp
 
         neighbor = np.hstack(bundles)
+
         # node1, node2 = np.random.choice(np.arange(self.length),
         #                                  size=2, replace=False)
         
         # neighbor[node1] = self.state[node2]
         # neighbor[node2] = self.state[node1]
-
         return neighbor
 
     def random_neighbor_swap_probability(self):
