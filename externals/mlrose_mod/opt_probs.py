@@ -10,7 +10,6 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree, depth_first_tree
 from .fitness import TravellingSales
 
-
 class OptProb:
     """Base class for optimisation problems.
 
@@ -246,7 +245,7 @@ class DiscreteOpt(OptProb):
         (max_val - 1), inclusive.
     """
 
-    def __init__(self, length, fitness_fn, maximize=True, max_val=2):
+    def __init__(self, length, fitness_fn, maximize=True, max_val=2, minigroups=None):
 
         OptProb.__init__(self, length, fitness_fn, maximize)
 
@@ -273,6 +272,7 @@ class DiscreteOpt(OptProb):
         self.sample_order = []
         self.prob_type = 'discrete'
         self.mimic_speed = False
+        self.minigroups = minigroups
 
     def eval_node_probs(self):
         """Update probability density estimates.
@@ -494,6 +494,17 @@ class DiscreteOpt(OptProb):
 
         return state
 
+    def getBundles(self,combination):
+
+        minigroups = self.minigroups
+        nBundles = 24
+        weights = np.array([ len(minigroups[x])  for x in combination ])
+        cumulative_arr = weights.cumsum() / weights.sum()
+        idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+        bundles = np.array_split(combination,idx)
+
+        return bundles
+    
     def random_neighbor_swap(self):
         """Return random neighbor of current state vector.
 
@@ -503,11 +514,26 @@ class DiscreteOpt(OptProb):
             State vector of random neighbor.
         """
         neighbor = np.copy(self.state)
-        node1, node2 = np.random.choice(np.arange(self.length),
+
+        bundles = self.getBundles(neighbor)
+
+        #Randomly pick two of the bundles
+        bundle1,bundle2 = np.random.choice(np.arange(len(bundles)),
                                          size=2, replace=False)
+
+        node1 = np.random.choice(np.arange(len(bundles[bundle1])))
+        node2 = np.random.choice(np.arange(len(bundles[bundle2])))
+
+        temp = bundles[bundle1][node1]
+        bundles[bundle1][node1] = bundles[bundle2][node2]
+        bundles[bundle2][node2] = temp
+
+        neighbor = np.hstack(bundles)
+        # node1, node2 = np.random.choice(np.arange(self.length),
+        #                                  size=2, replace=False)
         
-        neighbor[node1] = self.state[node2]
-        neighbor[node2] = self.state[node1]
+        # neighbor[node1] = self.state[node2]
+        # neighbor[node2] = self.state[node1]
 
         return neighbor
 

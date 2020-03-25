@@ -276,7 +276,6 @@ def getMinilpGBTGroups(data):
 
     return minigroups,minigroups_swap
     
-#def getBundles(minigroups,minigroups_swap,combination):
 def getBundles(minigroups_swap,combination):
 
     #Need to divide the minigroups into 24 groups taking into account their different size
@@ -293,12 +292,6 @@ def getBundles(minigroups_swap,combination):
         weight_bundles = np.array([ len(minigroups_swap[x])  for x in bundle ])
         if (weight_bundles.sum() > 72 ):
             print ( "Error: more than 72 lpgbts in bundle")
-
-    # for bundle in bundles:
-    #     for lpgbt in minigroups_swap[minigroups[bundle[-1]]]:
-    #         if not lpgbt in bundle[-5:]:
-    #             np.append(bundle,lpgbt)
-    #Check the last lpgbt of the bundle, does it belong to a mini-group?    
 
     
     return bundles
