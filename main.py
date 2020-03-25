@@ -157,9 +157,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         elif (algorithm == "genetic_alg"):
             best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=10, max_iters=10000, curve=False, random_state=1)
         elif (algorithm == "simulated_annealing"):
-            best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, 
-                                                   max_attempts = 100000, max_iters = 10000000, 
-                                                   init_state = init_state, random_state = 1)
+            best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state = 1)
         else:
             print("Algorithm "+ algorithm + " not known" )
 
@@ -180,8 +178,8 @@ def main():
     CMSSW_Silicon_v10 = "data/average_tcs_sil_v10_qg_20200305.csv"
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
-    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="bestsofar")
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="random")
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="bestsofar")
+    #    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="random")
 
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)

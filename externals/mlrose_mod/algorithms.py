@@ -112,7 +112,7 @@ def hill_climb(problem, max_iters=np.inf, restarts=0, init_state=None,
 
 
 def random_hill_climb(problem, max_attempts=10, max_iters=np.inf, restarts=0,
-                      init_state=None, curve=False, random_state=None,swap=True):
+                      init_state=None, curve=False, random_state=None, swap=True):
     """Use randomized hill climbing to find the optimum for a given
     optimization problem.
 
@@ -227,7 +227,7 @@ def random_hill_climb(problem, max_attempts=10, max_iters=np.inf, restarts=0,
 
 def simulated_annealing(problem, schedule=GeomDecay(), max_attempts=10,
                         max_iters=np.inf, init_state=None, curve=False,
-                        random_state=None):
+                        random_state=None, swap=True):
     """Use simulated annealing to find the optimum for a given
     optimization problem.
 
@@ -306,7 +306,10 @@ def simulated_annealing(problem, schedule=GeomDecay(), max_attempts=10,
 
         else:
             # Find random neighbor and evaluate fitness
-            next_state = problem.random_neighbor()
+            if swap:
+                next_state = problem.random_neighbor_swap()
+            else:
+                next_state = problem.random_neighbor()
             next_fitness = problem.eval_fitness(next_state)
 
             # Calculate delta E and change prob
