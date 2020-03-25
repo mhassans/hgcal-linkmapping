@@ -93,10 +93,11 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
+        typicalchi2 = 600000000000
         if (chi2<chi2_min):
             chi2_min = chi2
             combbest = np.copy(state)
-            print (algorithm," ", chi2_min)
+            print (algorithm," ", chi2_min, " ", chi2_min/typicalchi2)
             print (repr(combbest))
 
         return chi2
@@ -178,9 +179,9 @@ def main():
     CMSSW_Silicon_v10 = "data/average_tcs_sil_v10_qg_20200305.csv"
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="random")
+    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="simulated_annealing",OutputRootFile=False,initial_state="random")
     #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="bestsofar")
-    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="simulated_annealing",OutputRootFile=False,initial_state="bestsofar")
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="bestsofar")
 
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
