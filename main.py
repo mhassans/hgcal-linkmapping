@@ -96,7 +96,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         if (chi2<chi2_min):
             chi2_min = chi2
             combbest = np.copy(state)
-            print (chi2_min)
+            print (algorithm," ", chi2_min)
             print (repr(combbest))
 
         return chi2
