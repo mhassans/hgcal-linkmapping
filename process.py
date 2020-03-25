@@ -168,7 +168,7 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
-def getMiniGroupHists(module_hists, minigroups_swap):
+def getMiniGroupHists(lpgbt_hists, minigroups_swap):
     
     minigroup_hists = []
 
@@ -182,8 +182,8 @@ def getMiniGroupHists(module_hists, minigroups_swap):
 
         for lpgbt in lpgbts:
 
-            inclusive.Add( module_hists[0][lpgbt] )
-            phi60.Add( module_hists[1][lpgbt] )
+            inclusive.Add( lpgbt_hists[0][lpgbt] )
+            phi60.Add( lpgbt_hists[1][lpgbt] )
         
         minigroup_hists_inclusive[minigroup] = inclusive
         minigroup_hists_phi60[minigroup] = phi60
