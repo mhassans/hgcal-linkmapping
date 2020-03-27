@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists,getlpGBTHists,getMiniGroupHistsPY,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsPY,calculateChiSquared
+from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
@@ -71,7 +71,7 @@ def check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
 
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="best_so_far"):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="best_so_far",random_seed=1):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -81,7 +81,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
     lpgbt_hists = getlpGBTHists(data, module_hists)
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
 #    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
-    minigroup_hists = getMiniGroupHistsPY(lpgbt_hists,minigroups_swap)
+    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+    minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
 
     
     def mapping_max(state):
@@ -96,7 +97,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         bundles = getBundles(minigroups_swap,state)
         #start = time.time()
         #bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-        bundled_lpgbthists = getBundledlpgbtHistsPY(minigroup_hists,bundles)
+        bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
         #start2 = time.time()
         #print("2",start2 - start)
 
@@ -121,6 +122,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
 
     # Define decay schedule
     schedule = mlrose.ExpDecay()
+    #schedule = mlrose.ArithDecay()
 
     if ( OutputRootFile ):
         #Save best combination so far into a root file
@@ -140,8 +142,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
         #     print (len(bundle))
         #     weights = np.array([ len(minigroups_swap[x])  for x in bundle ])
         #     print (weights.sum())
-        bundled_hists = getBundledlpgbtHists(minigroup_hists,bundles,root=OutputRootFile)
-        newfile = ROOT.TFile("lpgbt_9.root","RECREATE")
+        bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
         for sector in bundled_hists:
             for key, value in sector.items():
                 value.Write()
@@ -162,10 +164,12 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
 
     else:
         if (algorithm == "random_hill_climb"):
-            best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=1)
+            best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=random_seed)
             print (best_state)
         elif (algorithm == "genetic_alg"):
-            best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=10, max_iters=10000, curve=False, random_state=1)
+            best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
+        elif (algorithm == "mimic"):
+            best_state, best_fitness = mlrose.mimic(problem_cust, pop_size=200,  keep_pct=0.2, max_attempts=10, max_iters=np.inf, curve=False, random_state=random_seed)
         elif (algorithm == "simulated_annealing"):
             best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state = 1)
         else:
@@ -189,8 +193,11 @@ def main():
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
     #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="random")
-    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="simulated_annealing",OutputRootFile=False,initial_state="random")
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="random")
+    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="simulated_annealing",OutputRootFile=False,initial_state="bestsofar",random_seed=20200326)
+    #    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="genetic_alg",OutputRootFile=False,initial_state="random")
+    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="mimic",OutputRootFile=False,initial_state="random")
+
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="bestsofar")
 
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)

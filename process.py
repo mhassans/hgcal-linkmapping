@@ -169,32 +169,32 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
-def getMiniGroupHists(lpgbt_hists, minigroups_swap):
+# def getMiniGroupHists(lpgbt_hists, minigroups_swap):
     
-    minigroup_hists = []
+#     minigroup_hists = []
 
-    minigroup_hists_inclusive = {}
-    minigroup_hists_phi60 = {}
+#     minigroup_hists_inclusive = {}
+#     minigroup_hists_phi60 = {}
 
-    for minigroup, lpgbts in minigroups_swap.items():
+#     for minigroup, lpgbts in minigroups_swap.items():
         
-        inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
-        phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
+#         inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
+#         phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
 
-        for lpgbt in lpgbts:
+#         for lpgbt in lpgbts:
 
-            inclusive.Add( lpgbt_hists[0][lpgbt] )
-            phi60.Add( lpgbt_hists[1][lpgbt] )
+#             inclusive.Add( lpgbt_hists[0][lpgbt] )
+#             phi60.Add( lpgbt_hists[1][lpgbt] )
         
-        minigroup_hists_inclusive[minigroup] = inclusive
-        minigroup_hists_phi60[minigroup] = phi60
+#         minigroup_hists_inclusive[minigroup] = inclusive
+#         minigroup_hists_phi60[minigroup] = phi60
 
-    minigroup_hists.append(minigroup_hists_inclusive)
-    minigroup_hists.append(minigroup_hists_phi60)
+#     minigroup_hists.append(minigroup_hists_inclusive)
+#     minigroup_hists.append(minigroup_hists_phi60)
 
-    return minigroup_hists
+#     return minigroup_hists
 
-def getMiniGroupHistsPY(lpgbt_hists, minigroups_swap):
+def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
     
     minigroup_hists = []
 
@@ -214,10 +214,14 @@ def getMiniGroupHistsPY(lpgbt_hists, minigroups_swap):
             
         inclusive_array = hist2array(inclusive)
         phi60_array = hist2array(phi60) 
-            
-        minigroup_hists_inclusive[minigroup] = inclusive_array
-        minigroup_hists_phi60[minigroup] = phi60_array
 
+        if ( root ):
+            minigroup_hists_inclusive[minigroup] = inclusive
+            minigroup_hists_phi60[minigroup] = phi60
+        else:
+            minigroup_hists_inclusive[minigroup] = inclusive_array
+            minigroup_hists_phi60[minigroup] = phi60_array
+            
     minigroup_hists.append(minigroup_hists_inclusive)
     minigroup_hists.append(minigroup_hists_phi60)
 
@@ -326,60 +330,46 @@ def getBundles(minigroups_swap,combination):
     
     return bundles
             
-def getBundledlpgbtHists(minigroup_hists,bundles,root=False):
+def getBundledlpgbtHistsRoot(minigroup_hists,bundles):
 
     bundled_lpgbthists = []
     bundled_lpgbthists_list = []
 
     for p,phiselection in enumerate(minigroup_hists):
 
-        #temp = {}
-        temp_list = {}
+        temp = {}
 
         for i in range(len(bundles)):#loop over bundles
 
             #Create one lpgbt histogram per bundle
             lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
-            lpgbt_hist_list = [] 
             
             for minigroup in bundles[i]:#loop over each lpgbt in the bundle
                 lpgbt_hist.Add( phiselection[minigroup]  )
 
-            for b in range(1,lpgbt_hist.GetNbinsX()+1): 
-                lpgbt_hist_list.append(lpgbt_hist.GetBinContent(b))
+            temp[i] = lpgbt_hist
 
-            #temp_list[i] = lpgbt_hist
-            if (root):
-                temp_list[i] = lpgbt_hist
-            else:
-                temp_list[i] = lpgbt_hist_list
-
-        bundled_lpgbthists_list.append(temp_list)
+        bundled_lpgbthists_list.append(temp)
 
     return bundled_lpgbthists_list
 
 
-def getBundledlpgbtHistsPY(minigroup_hists,bundles,root=False):
+def getBundledlpgbtHists(minigroup_hists,bundles):
 
     bundled_lpgbthists = []
     bundled_lpgbthists_list = []
 
     for p,phiselection in enumerate(minigroup_hists):
 
-        #temp = {}
         temp_list = {}
 
         for i in range(len(bundles)):#loop over bundles
 
             #Create one lpgbt histogram per bundle
-            ##lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
             lpgbt_hist_list = np.zeros(42) 
             
             for minigroup in bundles[i]:#loop over each lpgbt in the bundle
                 lpgbt_hist_list+= phiselection[minigroup] 
-
-            # for b in range(1,lpgbt_hist.GetNbinsX()+1): 
-            #     lpgbt_hist_list.append(lpgbt_hist.GetBinContent(b))
 
             temp_list[i] = lpgbt_hist_list
 
