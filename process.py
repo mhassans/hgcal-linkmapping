@@ -169,31 +169,6 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
-# def getMiniGroupHists(lpgbt_hists, minigroups_swap):
-    
-#     minigroup_hists = []
-
-#     minigroup_hists_inclusive = {}
-#     minigroup_hists_phi60 = {}
-
-#     for minigroup, lpgbts in minigroups_swap.items():
-        
-#         inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
-#         phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
-
-#         for lpgbt in lpgbts:
-
-#             inclusive.Add( lpgbt_hists[0][lpgbt] )
-#             phi60.Add( lpgbt_hists[1][lpgbt] )
-        
-#         minigroup_hists_inclusive[minigroup] = inclusive
-#         minigroup_hists_phi60[minigroup] = phi60
-
-#     minigroup_hists.append(minigroup_hists_inclusive)
-#     minigroup_hists.append(minigroup_hists_phi60)
-
-#     return minigroup_hists
-
 def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
     
     minigroup_hists = []
