@@ -3,13 +3,22 @@ import pandas as pd
 import numpy as np
 from rotate import rotate_to_sector_0
 import matplotlib.pyplot as plt
+import ROOT
+import time
+import itertools
+import random
+#import mlrose
+import sys
+from root_numpy import hist2array
 
-
+np.set_printoptions(threshold=sys.maxsize)
 pd.set_option('display.max_rows', None)
+
+infiles = []
 
 def loadDataFile(MappingFile):
 
-    column_names=['layer', 'u', 'v', 'density', 'nDAQ', 'nTPG','DAQId1','nDAQeLinks1','DAQId2','nDAQeLinks2','TPGId1','nTPGeLinks1','TPGId2','nTPGeLinks2']
+    column_names=['layer', 'u', 'v', 'density', 'shape', 'nDAQ', 'nTPG','DAQId1','nDAQeLinks1','DAQId2','nDAQeLinks2','TPGId1','nTPGeLinks1','TPGId2','nTPGeLinks2']
 
     #Read in data file
     data = pd.read_csv(MappingFile,delim_whitespace=True,names=column_names)
@@ -31,6 +40,52 @@ def getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator):
 
     return data,data_scin
     
+def getModuleHists(HistFile):
+
+    module_hists = []
+    inclusive_hists = []
+    
+    infiles.append(ROOT.TFile.Open(HistFile,"READ"))
+
+    inclusive = {}
+    phi60 = {}
+    
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                inclusive[0,i,j,k] = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                phi60[0,i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                inclusive[1,i,j,k] = infiles[-1].Get("ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                phi60[1,i,j,k] = infiles[-1].Get("ROverZ_Phi60_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+
+    
+
+    inclusive_hists.append(infiles[-1].Get("ROverZ_Inclusive" ))
+    inclusive_hists.append(infiles[-1].Get("ROverZ_Inclusive_Phi60" ))
+                
+    module_hists.append(inclusive)
+    module_hists.append(phi60)
+            
+    return inclusive_hists,module_hists
+
 def getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin):
     #Loop over all lpgbts
         
@@ -65,7 +120,6 @@ def getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin):
                     linkfrac = 'TPGeLinkFrac1'
                     if ( tpg_index == 'TPGId2' ):
                         linkfrac = 'TPGeLinkFrac2'
-                
                     tc_load += row[linkfrac] * ntcs #Add the number of trigger cells from a given module to the lpgbt
                     word_load += row[linkfrac] * nwords #Add the number of trigger cells from a given module to the lpgbt
                     
@@ -115,91 +169,207 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
-def check_for_missing_modules(data,data_tcs_passing,data_tcs_passing_scin):
-
-    mappingfile_sil = data[data['density']<2][['layer', 'u', 'v']]
-    mappingfile_scin = data[data['density']==2][['layer', 'u', 'v']]
-
-    cmssw_sil = data_tcs_passing[['u','v','layer','nTCs']]
-    cmssw_scin = data_tcs_passing_scin[['u','v','layer','nTCs']]
-
-    #onlymapping_sil = mappingfile.merge(cmssw.drop_duplicates(), on=['u','v','layer'],how='left', indicator=True)
-    onlycmssw_sil = cmssw_sil.merge(mappingfile_sil.drop_duplicates(), on=['u','v','layer'],how='left', indicator=True)
-    onlycmssw_scin = cmssw_scin.merge(mappingfile_scin.drop_duplicates(), on=['u','v','layer'],how='left', indicator=True)
-
-    onlycmssw_sil = onlycmssw_sil[onlycmssw_sil['_merge'] == 'left_only']
-    onlycmssw_scin = onlycmssw_scin[onlycmssw_scin['_merge'] == 'left_only']
-
-    print ("Silicon")
-    print (onlycmssw_sil[onlycmssw_sil['nTCs']>0][['layer','u','v']].to_string(index=False))
-    print ("Scintillator")
-    print (onlycmssw_scin[onlycmssw_scin['nTCs']>0][['layer','u','v']].to_string(index=False))
+def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
     
-def plot(variable,savename="hist.png",binwidth=1,xtitle='Number of words on a single lpGBT'):
-    fig = plt.figure()
-    binwidth=binwidth
-    plt.hist(variable, bins=np.arange(min(variable), max(variable) + binwidth, binwidth))
-    plt.ylabel('Number of Entries')
-    plt.xlabel(xtitle)
-    plt.savefig(savename)
+    minigroup_hists = []
+
+    minigroup_hists_inclusive = {}
+    minigroup_hists_phi60 = {}
+
+    for minigroup, lpgbts in minigroups_swap.items():
+        
+        inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
+        phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
+
+        for lpgbt in lpgbts:
+
+            inclusive.Add( lpgbt_hists[0][lpgbt] )
+            phi60.Add( lpgbt_hists[1][lpgbt] )
+
+            
+        inclusive_array = hist2array(inclusive)
+        phi60_array = hist2array(phi60) 
+
+        if ( root ):
+            minigroup_hists_inclusive[minigroup] = inclusive
+            minigroup_hists_phi60[minigroup] = phi60
+        else:
+            minigroup_hists_inclusive[minigroup] = inclusive_array
+            minigroup_hists_phi60[minigroup] = phi60_array
+            
+    minigroup_hists.append(minigroup_hists_inclusive)
+    minigroup_hists.append(minigroup_hists_phi60)
+
+    return minigroup_hists
+
+def getlpGBTHists(data, module_hists):
+
+    lpgbt_hists = []
+
+    for p,phiselection in enumerate(module_hists):#inclusive and phi < 60
+
+        temp = {}
+
+        for lpgbt in range(0,1600) :
+            lpgbt_found = False
+
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.58);
+            
+            for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
+
+                for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
+                    lpgbt_found = True
+                    
+                    if (row['density']==2):#Scintillator
+
+                        hist = phiselection[ 1, row['u'], row['v'], row['layer'] ] # get module hist
+                    else:
+                        hist = phiselection[ 0, row['u'], row['v'], row['layer'] ] # get module hist        
+
+                    linkfrac = 'TPGeLinkFrac1'
+                    if ( tpg_index == 'TPGId2' ):
+                        linkfrac = 'TPGeLinkFrac2'
+
+                    lpgbt_hist.Add( hist, row[linkfrac] ) # add module hist with the correct e-link weight
+
+            if lpgbt_found:
+                temp[lpgbt] = lpgbt_hist
+
+        lpgbt_hists.append(temp)
+    
+    return lpgbt_hists
+
+def getMinilpGBTGroups(data):
+
+    minigroups = {}
+    counter = 0
+    minigroups_swap = {}
+    
+    for index, row in data.iterrows():
+        # if (row['density']==2):#Scintillator
+        #     continue
+        if (row['nTPG']==0): continue
+
+        elif (row['nTPG']==1): 
+            #If there is only one lpgbt attached to the module
+            #Check if it is attached to another module
+            #If it is not create a new minigroup
+            #which is labelled with 'counter'
+            if not (row['TPGId1'] in minigroups):
+
+                minigroups[row['TPGId1']] = counter
+                counter+=1
+
+            
+        elif (row['nTPG']==2): 
+            
+            #If there are two lpgbts attached to the module
+            #The second one is "new"
+
+            if (row['TPGId2'] in minigroups):
+                print ("should not be the case?")
+
+            if (row['TPGId1'] in minigroups):
+                minigroups[row['TPGId2']] = minigroups[row['TPGId1']]
+            else:
+                minigroups[row['TPGId1']] = counter
+                minigroups[row['TPGId2']] = counter
+
+                counter+=1
+
+    for lpgbt, minigroup in minigroups.items(): 
+        if minigroup in minigroups_swap: 
+            minigroups_swap[minigroup].append(lpgbt) 
+        else: 
+            minigroups_swap[minigroup]=[lpgbt] 
+
+    return minigroups,minigroups_swap
+    
+def getBundles(minigroups_swap,combination):
+
+    #Need to divide the minigroups into 24 groups taking into account their different size
+    nBundles = 24
+    #The weights are the numbers of lpgbts in each mini-groups
+    weights = np.array([ len(minigroups_swap[x])  for x in combination ])
+    cumulative_arr = weights.cumsum() / weights.sum()
+    #Calculate the indices where to perform the split
+    idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+
+    bundles = np.array_split(combination,idx)
+
+    for bundle in bundles:
+        weight_bundles = np.array([ len(minigroups_swap[x])  for x in bundle ])
+        if (weight_bundles.sum() > 72 ):
+            print ( "Error: more than 72 lpgbts in bundle")
+
+    
+    return bundles
+            
+def getBundledlpgbtHistsRoot(minigroup_hists,bundles):
+
+    bundled_lpgbthists = []
+    bundled_lpgbthists_list = []
+
+    for p,phiselection in enumerate(minigroup_hists):
+
+        temp = {}
+
+        for i in range(len(bundles)):#loop over bundles
+
+            #Create one lpgbt histogram per bundle
+            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
+            
+            for minigroup in bundles[i]:#loop over each lpgbt in the bundle
+                lpgbt_hist.Add( phiselection[minigroup]  )
+
+            temp[i] = lpgbt_hist
+
+        bundled_lpgbthists_list.append(temp)
+
+    return bundled_lpgbthists_list
+
+
+def getBundledlpgbtHists(minigroup_hists,bundles):
+
+    bundled_lpgbthists = []
+    bundled_lpgbthists_list = []
+
+    for p,phiselection in enumerate(minigroup_hists):
+
+        temp_list = {}
+
+        for i in range(len(bundles)):#loop over bundles
+
+            #Create one lpgbt histogram per bundle
+            lpgbt_hist_list = np.zeros(42) 
+            
+            for minigroup in bundles[i]:#loop over each lpgbt in the bundle
+                lpgbt_hist_list+= phiselection[minigroup] 
+
+            temp_list[i] = lpgbt_hist_list
+
+        bundled_lpgbthists_list.append(temp_list)
+
+    return bundled_lpgbthists_list
+
+
+def calculateChiSquared(inclusive,grouped):
+
+    chi2_total = 0
+
+    for i in range(2):
+
+        for key,hist in grouped[i].items():
+
+            for b in range(len(hist)):
+
+                squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )   
+
+                chi2_total+=squared_diff
+
+    return chi2_total
+
+
+
     
 
-def plot2D(variable_x,variable_y,savename="hist2D.png",binwidthx=1,binwidthy=1,xtitle='Number of words on a single lpGBT'):
-    
-    fig = plt.figure()
-    binwidthx=binwidthx
-    binwidthy=binwidthy
-    plt.hist2d(variable_x,variable_y,bins=[np.arange(min(variable_x), max(variable_x) + binwidthx, binwidthx),np.arange(min(variable_y), max(variable_y) + binwidthy, binwidthy)])
-#    plt.hist2d(variable_x,variable_y,bins=[np.arange(0.9, max(variable_x) + binwidthx, binwidthx),np.arange(min(variable_y), max(variable_y) + binwidthy, binwidthy)])
-    plt.colorbar()
-    plt.ylabel('Layer')
-    plt.xlabel(xtitle)
-    plt.savefig(savename)
-
-def main():
-
-    #Customisation
-    MappingFile = "data/FeMappingV6.txt"
-
-    #V11
-    CMSSW_Silicon = "data/average_tcs_sil_v11_ttbar_20200305.csv"
-    CMSSW_Scintillator = "data/average_tcs_scin_v11_ttbar_20200305.csv"
-
-    #V10
-    # CMSSW_Silicon = "data/average_tcs_sil_v10_qg_20200305.csv"
-    # CMSSW_Scintillator = "data/average_tcs_scin_v10_qg_20200305.csv"
-
-    
-    Plot_lpGBTLoads = False
-    Plot_ModuleLoads = True
-    
-    
-    #Load Data    
-    data = loadDataFile(MappingFile) #dataframe
-    data_tcs_passing,data_tcs_passing_scin = getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator) #from CMSSW
-
-    #Check for missing modules
-    #check_for_missing_modules(data,data_tcs_passing,data_tcs_passing_scin)
-
-    if ( Plot_lpGBTLoads ):
-        lpgbt_loads_tcs,lpgbt_loads_words,lpgbt_layers = getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin)
-        plot(lpgbt_loads_tcs,"loads_tcs.png",binwidth=0.1,xtitle='Number of TCs on a single lpGBT')
-        plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
-        plot2D(lpgbt_loads_tcs,lpgbt_layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
-        plot2D(lpgbt_loads_words,lpgbt_layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
-
-    if ( Plot_ModuleLoads ):
-        module_loads_words,module_layers,u,v = getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scinprint_modules_no_tcs=False)
-
-        d= {'loads':module_loads_words,'layer':module_layers,'u':u,'v':v}
-        df = pd.DataFrame(d)
-        result = df.sort_values(['loads'])
-        print(result)
-    
-        plot(module_loads_words,"module_loads_words.png",binwidth=0.01,xtitle=r'Average number of words on a single module / $2 \times N_{e-links}$')
-        plot2D(module_loads_words,module_layers,"module_words_vs_layer.png",binwidthx=0.05,binwidthy=1,xtitle=r'Average number of words on a single module / $2 \times N_{e-links}$')
-    
-
-
-    
-main()
