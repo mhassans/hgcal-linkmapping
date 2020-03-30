@@ -71,7 +71,7 @@ def check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
 
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="best_so_far",random_seed=1):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -124,24 +124,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
     schedule = mlrose.ExpDecay()
     #schedule = mlrose.ArithDecay()
 
-    if ( OutputRootFile ):
+    if ( algorithm == "save_root" ):
         #Save best combination so far into a root file
-        #bundles = getBundles(minigroups,minigroups_swap,init_state)
         bundles = getBundles(minigroups_swap,init_state)
 
-        # print ("init_state")
-        # print (init_state)
-
-        # print ("minigroups_swap")
-        # print (minigroups_swap)
-        
-        # print ("BUNDLES")
-        # print (bundles)
-
-        # for bundle in bundles:
-        #     print (len(bundle))
-        #     weights = np.array([ len(minigroups_swap[x])  for x in bundle ])
-        #     print (weights.sum())
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
         for sector in bundled_hists:
@@ -162,18 +148,19 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",Ou
                 for lpgbt in lpgbts:
                     print (str(lpgbt) + ", "  , end = '')
 
+    elif (algorithm == "random_hill_climb"):
+        best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=random_seed)
+        print (best_state)
+    elif (algorithm == "hill_climb"):
+        best_state, best_fitness = mlrose.hill_climb(problem_cust, max_iters=np.inf, restarts=0, init_state=init_state, curve=False, random_state=random_seed)
+    elif (algorithm == "genetic_alg"):
+        best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
+    elif (algorithm == "mimic"):
+        best_state, best_fitness = mlrose.mimic(problem_cust, pop_size=200,  keep_pct=0.2, max_attempts=10, max_iters=np.inf, curve=False, random_state=random_seed)
+    elif (algorithm == "simulated_annealing"):
+        best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state = 1)
     else:
-        if (algorithm == "random_hill_climb"):
-            best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=random_seed)
-            print (best_state)
-        elif (algorithm == "genetic_alg"):
-            best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
-        elif (algorithm == "mimic"):
-            best_state, best_fitness = mlrose.mimic(problem_cust, pop_size=200,  keep_pct=0.2, max_attempts=10, max_iters=np.inf, curve=False, random_state=random_seed)
-        elif (algorithm == "simulated_annealing"):
-            best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state = 1)
-        else:
-            print("Algorithm "+ algorithm + " not known" )
+        print("Algorithm "+ algorithm + " not known" )
 
 
     
@@ -181,24 +168,29 @@ def main():
 
     #Customisation
     MappingFile = "data/FeMappingV7.txt"
-    CMSSW_ModuleHists = "data/ROverZHistograms.root"
 
     #V11
     CMSSW_Silicon = "data/average_tcs_sil_v11_ttbar_20200305.csv"
     CMSSW_Scintillator = "data/average_tcs_scin_v11_ttbar_20200305.csv"
-    CMSSW_ModuleHists = "data/ROverZHistograms.root"
+    CMSSW_ModuleHists = "data/ROverZHistograms_v11-2.root"
     
     #V10
     CMSSW_Silicon_v10 = "data/average_tcs_sil_v10_qg_20200305.csv"
     CMSSW_Scintillator_v10 = "data/average_tcs_scin_v10_qg_20200305.csv"
 
-    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=False,initial_state="random")
-    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="simulated_annealing",OutputRootFile=False,initial_state="bestsofar",random_seed=20200326)
-    #    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="genetic_alg",OutputRootFile=False,initial_state="random")
-    #study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="mimic",OutputRootFile=False,initial_state="random")
 
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",OutputRootFile=True,initial_state="bestsofar")
+    algorithm = "random_hill_climb"
+    #algorithm = "hill_climb"
+    #algorithm = "simulated_annealing"
+    #algorithm = "genetic_alg"    
+    #algorithm = "save_root"
 
+    
+    #initial_state = "bestsofar"
+    initial_state = "random"
+
+
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm=algorithm,initial_state=initial_state,random_seed=20200330)
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
     #plot_lpGBTLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
