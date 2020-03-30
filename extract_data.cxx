@@ -170,9 +170,9 @@ std::pair<float,float> getROverZPhi(float x, float y, float z){
 int main(){
   TH1::SetDefaultSumw2();
   TH1::AddDirectory(kFALSE);
-  TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
+  //TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
   //TFile * file = new TFile("data/PU200-QG.root","READ");
-  //TFile * file = new TFile("data/PU200-3.root","READ");
+  TFile * file = new TFile("data/PU200-3.root","READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
   
   // Declaration of leaf types
