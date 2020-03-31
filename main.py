@@ -90,16 +90,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         global combbest
 
         chi2 = 0
-
-        
-
-        #bundles = getBundles(minigroups,minigroups_swap,state)
+    
         bundles = getBundles(minigroups_swap,state)
-        #start = time.time()
         #bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-        #start2 = time.time()
-        #print("2",start2 - start)
 
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
@@ -107,8 +101,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         if (chi2<chi2_min):
             chi2_min = chi2
             combbest = np.copy(state)
-            print (algorithm," ", chi2_min, " ", chi2_min/typicalchi2)
-            print (repr(combbest))
+            #print (algorithm," ", chi2_min, " ", chi2_min/typicalchi2)
+            #print (repr(combbest))
 
         return chi2
     
@@ -123,6 +117,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     # Define decay schedule
     schedule = mlrose.ExpDecay()
     #schedule = mlrose.ArithDecay()
+
+
+    filename = "bundles_job_" + str(sys.argv[1])
+
 
     if ( algorithm == "save_root" ):
         #Save best combination so far into a root file
@@ -149,8 +147,14 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
                     print (str(lpgbt) + ", "  , end = '')
 
     elif (algorithm == "random_hill_climb"):
-        best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=10000000, restarts=0, init_state=init_state, random_state=random_seed)
-        print (best_state)
+        best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=100000, restarts=0, init_state=init_state, random_state=random_seed)
+        bundles = getBundles(minigroups_swap,best_state)
+        #print (repr(best_state))
+        np.save(filename + ".npy",bundles)
+        file1 = open("chi2.txt","a")
+        file1.write( filename + " " + str(best_fitness) + "\n" )
+        file1.close( )
+
     elif (algorithm == "hill_climb"):
         best_state, best_fitness = mlrose.hill_climb(problem_cust, max_iters=np.inf, restarts=0, init_state=init_state, curve=False, random_state=random_seed)
     elif (algorithm == "genetic_alg"):
@@ -166,6 +170,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     
 def main():
 
+
+    
     #Customisation
     MappingFile = "data/FeMappingV7.txt"
 
@@ -190,7 +196,7 @@ def main():
     initial_state = "random"
 
 
-    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm=algorithm,initial_state=initial_state,random_seed=20200330)
+    study_mapping(MappingFile,CMSSW_ModuleHists,algorithm=algorithm,initial_state=initial_state,random_seed=None)
     
     #check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
     #plot_lpGBTLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator)
