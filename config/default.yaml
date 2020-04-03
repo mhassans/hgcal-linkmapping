@@ -2,17 +2,20 @@ function:
   study_mapping: True
   check_for_missing_modules: False
   plot_lpGBTLoads: False
-  plot_ModuleLoads: False		
- 
+  plot_ModuleLoads: False               
+
+print_level: 0
+
 study_mapping:
   MappingFile: data/FeMappingV7.txt
   CMSSW_ModuleHists: data/ROverZHistograms_v11-2.root
-  algorithm: save_root
-  # algorithm: random_hill_climb
+  #algorithm: save_root
+  algorithm: random_hill_climb
   # algorithm: simulated_annealing
-  # algorithm: genetic_alg	
-  initial_state: bestsofar
-  # initial state: random	
+  # algorithm: genetic_alg      
+  #initial_state: bestsofar
+  initial_state: random
+  #initial_state: bestsofar_38.npy       
   random_seed: ~
 
 check_for_missing_modules:
