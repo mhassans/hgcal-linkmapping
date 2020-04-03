@@ -1,0 +1,35 @@
+function:
+  study_mapping: True
+  check_for_missing_modules: False
+  plot_lpGBTLoads: False
+  plot_ModuleLoads: False		
+ 
+study_mapping:
+  MappingFile: data/FeMappingV7.txt
+  CMSSW_ModuleHists: data/ROverZHistograms_v11-2.root
+  algorithm: save_root
+  # algorithm: random_hill_climb
+  # algorithm: simulated_annealing
+  # algorithm: genetic_alg	
+  initial_state: bestsofar
+  # initial state: random	
+  random_seed: ~
+
+check_for_missing_modules:
+  MappingFile: data/FeMappingV7.txt
+  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
+  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"
+
+plot_lpGBTLoads:
+  MappingFile: data/FeMappingV7.txt
+  # V11
+  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
+  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"
+  # V10
+  # CMSSW_Silicon: "data/average_tcs_sil_v10_qg_20200305.csv"
+  # CMSSW_Scintillator: "data/average_tcs_scin_v10_qg_20200305.csv"
+
+plot_ModuleLoads:
+  MappingFile: data/FeMappingV7.txt
+  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
+  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"
