@@ -1,6 +1,6 @@
 function:
-  study_mapping: True
-  check_for_missing_modules: False
+  study_mapping: False
+  check_for_missing_modules: True
   plot_lpGBTLoads: False
   plot_ModuleLoads: False               
 
@@ -19,6 +19,8 @@ study_mapping:
   random_seed: ~
 
 check_for_missing_modules:
+  inCMSSW: True
+  inMappingFile: True
   MappingFile: data/FeMappingV7.txt
   CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
   CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"

@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
 from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
-from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo
+from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
 
@@ -39,15 +39,17 @@ def plot_ModuleLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
     data = loadDataFile(MappingFile) #dataframe    
     data_tcs_passing,data_tcs_passing_scin = getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator) #from CMSSW
     
-    lpgbt_loads_tcs,lpgbt_loads_words,lpgbt_layers = getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin)
+    lpgbt_loads_tcs,lpgbt_loads_words,lpgbt_layers = getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin)
 
     plot(lpgbt_loads_tcs,"loads_tcs.png",binwidth=0.1,xtitle='Number of TCs on a single lpGBT')
     plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
     plot2D(lpgbt_loads_tcs,lpgbt_layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
     plot2D(lpgbt_loads_words,lpgbt_layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
 
-def check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
+def check_for_missing_modules_inMappingFile(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
+    #Check for modules missing in the mapping file
+    
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     data_tcs_passing,data_tcs_passing_scin = getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator) #from CMSSW
@@ -70,7 +72,13 @@ def check_for_missing_modules(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
     print ("Scintillator")
     print (onlycmssw_scin[onlycmssw_scin['nTCs']>0][['layer','u','v']].to_string(index=False))
 
+def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
+    #Load external data
+    data = loadDataFile(MappingFile) #dataframe    
+    data_tcs_passing,data_tcs_passing_scin = getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator) #from CMSSW
+    getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
+    
     
 def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,print_level=0):
 
@@ -191,7 +199,12 @@ def main():
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']
-        check_for_missing_modules(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
+        if ( subconfig['inMappingFile'] ):
+            print("Missing modules in mapping file: "+ subconfig['MappingFile'] + "\n")
+            check_for_missing_modules_inMappingFile(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
+        if ( subconfig['inCMSSW'] ):
+            print("\nMissing modules in CMSSW\n")
+            check_for_missing_modules_inCMSSW(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
 
     if ( config['function']['plot_lpGBTLoads'] ):
         subconfig = config['plot_lpGBTLoads']
