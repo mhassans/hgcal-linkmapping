@@ -1,5 +1,11 @@
 # HGCal link mapping studies
 
+## Installation
+
+If you don't have python and the relevant packages installed please run: `source install_packages.sh`
+If you additionally need `ROOT` installed, then uncomment the final line in that file.
+Then each time you start a new session run: `source start_mapping_env.sh`
+
 ## `main.py`
 
 Main file containing the option to run all functions:

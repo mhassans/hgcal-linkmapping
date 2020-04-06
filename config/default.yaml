@@ -22,19 +22,19 @@ check_for_missing_modules:
   inCMSSW: True
   inMappingFile: True
   MappingFile: data/FeMappingV7.txt
-  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
-  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"
+  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200331.csv"
+  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200331.csv"
 
 plot_lpGBTLoads:
   MappingFile: data/FeMappingV7.txt
   # V11
-  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
-  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"
+  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200331.csv"
+  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200331.csv"
   # V10
-  # CMSSW_Silicon: "data/average_tcs_sil_v10_qg_20200305.csv"
-  # CMSSW_Scintillator: "data/average_tcs_scin_v10_qg_20200305.csv"
+  # CMSSW_Silicon: "data/average_tcs_sil_v10_qg_20200331.csv"
+  # CMSSW_Scintillator: "data/average_tcs_scin_v10_qg_20200331.csv"
 
 plot_ModuleLoads:
   MappingFile: data/FeMappingV7.txt
-  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200305.csv"
-  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200305.csv"
+  CMSSW_Silicon: "data/average_tcs_sil_v11_ttbar_20200331.csv"
+  CMSSW_Scintillator: "data/average_tcs_scin_v11_ttbar_20200331.csv"

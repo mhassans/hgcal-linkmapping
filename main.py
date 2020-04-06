@@ -139,7 +139,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     #schedule = mlrose.ArithDecay()
 
     filename = "bundles_job_" 
-    if ( len(sys.argv) > 1 ):
+    if ( len(sys.argv) > 2 ):
         filename += str(sys.argv[1])
     else:
         filename += "default"
@@ -190,8 +190,18 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     
 def main():
 
-    with open('config/default.yaml','r') as file:
-        config = yaml.load(file,Loader=yaml.FullLoader)
+    try:
+        config_file = sys.argv[1]
+    except IndexError:
+         print ("Please give valid config file")
+         exit()
+    try:
+        with open(config_file,'r') as file:
+            config = yaml.load(file,Loader=yaml.FullLoader)
+    except EnvironmentError:
+        print ("Please give valid config file")
+        exit()
+    
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
