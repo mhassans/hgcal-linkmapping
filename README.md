@@ -2,9 +2,18 @@
 
 ## Installation
 
-If you don't have python and the relevant packages installed please run: `source install_packages.sh`
-If you additionally need `ROOT` installed, then uncomment the final line in that file.
+- If you don't have python and the relevant packages installed please run: `source install_packages.sh`.
+Note the size of the installation is around 4GB.
 Then each time you start a new session run: `source start_mapping_env.sh`
+
+- If you have python and can install your own packages the relevant ones are:
+    - numpy
+    - matplotlib	
+    - pandas
+    - pyyaml
+    - scikit-learn
+    - ROOT
+    - root_numpy
 
 ## `main.py`
 

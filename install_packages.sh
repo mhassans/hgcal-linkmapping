@@ -22,4 +22,9 @@ cd ../
 conda create -y -n mapping_env python=${CondaVer} pip
 conda activate mapping_env
 
-#conda install -c conda-forge ROOT #Optional ROOT installation
+conda install -y -c conda-forge ROOT #ROOT installation
+conda install -y -c conda-forge scikit-learn
+conda install -y -c conda-forge pyyaml
+conda install -y -c conda-forge pandas
+conda install -y -c conda-forge matplotlib
+conda install -y -c conda-forge root_numpy
