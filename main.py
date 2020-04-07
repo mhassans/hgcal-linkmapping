@@ -140,7 +140,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
     filename = "bundles_job_" 
     if ( len(sys.argv) > 2 ):
-        filename += str(sys.argv[1])
+        filename += str(sys.argv[2])
     else:
         filename += "default"
 
