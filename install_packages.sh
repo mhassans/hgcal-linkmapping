@@ -1,4 +1,5 @@
 CondaVer=3
+unset PYTHONPATH
 MINICONDA_DIR=./miniconda${CondaVer}  # change to wherever you like
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
     wget https://repo.continuum.io/miniconda/Miniconda${CondaVer}-latest-Linux-x86_64.sh
