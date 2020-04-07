@@ -5,6 +5,7 @@ function:
   plot_ModuleLoads: False               
 
 print_level: 0
+output_dir: .
 
 study_mapping:
   MappingFile: data/FeMappingV7.txt
@@ -17,7 +18,7 @@ study_mapping:
   initial_state: random
   #initial_state: bestsofar_38.npy       
   random_seed: ~
-
+  
 check_for_missing_modules:
   inCMSSW: True
   inMappingFile: True
