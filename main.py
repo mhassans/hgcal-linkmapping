@@ -80,7 +80,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,output_dir=".",print_level=0):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iteratons=100000,output_dir=".",print_level=0):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -169,14 +169,27 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         
     elif (algorithm == "random_hill_climb"):
-        best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=100000, restarts=0, init_state=init_state, random_state=random_seed)
-        bundles = getBundles(minigroups_swap,best_state)
-        print (repr(best_state))
-        np.save(output_dir + "/" + filename + ".npy",bundles)
-        file1 = open(output_dir + "/chi2.txt","a")
-        file1.write( filename + " " + str(best_fitness) + "\n" )
-        file1.close( )
+        try:
+            best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
+            print (repr(best_state))
+            #bundles = getBundles(minigroups_swap,best_state)
+            #np.save(output_dir + "/" + filename + ".npy",bundles)
+            # file1 = open(output_dir + "/chi2.txt","a")
+            # file1.write( filename + " " + str(best_fitness) + "\n" )
+            # file1.close( )
 
+        except KeyboardInterrupt:
+            print("interrupt received, stopping and saving")
+            
+        finally:
+
+            bundles = getBundles(minigroups_swap,combbest)
+            np.save(output_dir + "/" + filename + ".npy",bundles)
+            file1 = open(output_dir + "/chi2.txt","a")
+            file1.write( filename + " " + str(chi2_min) + "\n" )
+            file1.close( )
+
+            
     elif (algorithm == "genetic_alg"):
         best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
     elif (algorithm == "mimic"):
@@ -205,7 +218,7 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],output_dir=config['output_dir'],print_level=config['print_level'])
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iters'],output_dir=config['output_dir'],print_level=config['print_level'])
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']
