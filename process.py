@@ -86,6 +86,27 @@ def getModuleHists(HistFile):
             
     return inclusive_hists,module_hists
 
+def getHistsPerLayer(module_hists):
+
+    f = ROOT.TFile.Open("HistsPerLayer.root","RECREATE")
+    histsPerLayer = []
+    
+    for layer in range(1,53):
+        layer_hist = ROOT.TH1D( ("layer_ROverZ" + "_" + str(layer)),"",42,0.076,0.58);
+        histsPerLayer.append(layer_hist)
+
+    print (len(histsPerLayer))
+    
+    for key,hist in module_hists[0].items():
+        histsPerLayer[key[3]-1].Add( hist )
+
+    for hist in histsPerLayer:
+        hist.Write()
+
+    f.Close()
+        
+    return histsPerLayer
+
 def getlpGBTLoadInfo(data,data_tcs_passing,data_tcs_passing_scin):
     #Loop over all lpgbts
         
