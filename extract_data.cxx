@@ -170,10 +170,25 @@ std::pair<float,float> getROverZPhi(float x, float y, float z){
 int main(){
   TH1::SetDefaultSumw2();
   TH1::AddDirectory(kFALSE);
+
+  // TString input_file = "../small_v11_ttbar_200406.root";
+  // TString flat_file_silicon = "words_all_v11_silicon.txt";
+  // TString flat_file_scintillator = "words_all_v11_scintillator.txt";
+
+  TString input_file = "../small_v11_neutrino_gun_200415.root.root";
+  TString flat_file_silicon = "words_all_v11_silicon_neutrino_gun.txt";
+  TString flat_file_scintillator = "words_all_v11_scintillator_neutrino_gun.txt";
+
   //TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
   //TFile * file = new TFile("data/PU200-QG.root","READ");
   //TFile * file = new TFile("data/PU200-3.root","READ");
-  TFile * file = new TFile("../small_v11_ttbar_200406.root","READ");
+  //  TFile * file = new TFile("../small_v11_ttbar_200406.root","READ");
+
+
+
+
+
+  TFile * file = new TFile(input_file,"READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
 
   bool createFlatFile = true;
@@ -267,8 +282,8 @@ int main(){
     std::ofstream f_flattree_silicon;
     std::ofstream f_flattree_scintillator;
     if (createFlatFile){
-      f_flattree_silicon.open ("words_all_v11_silicon.txt");
-      f_flattree_scintillator.open ("words_all_v11_scintillator.txt");
+      f_flattree_silicon.open (flat_file_silicon);
+      f_flattree_scintillator.open (flat_file_scintillator);
     }
 
 
