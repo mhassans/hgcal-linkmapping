@@ -186,7 +186,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             bundles = getBundles(minigroups_swap,combbest)
             np.save(output_dir + "/" + filename + ".npy",bundles)
             file1 = open(output_dir + "/chi2.txt","a")
-            file1.write( filename + " " + str(chi2_min) + "\n" )
+            file1.write( "bundles[" + sys.argv[2] + "] = " + str(chi2_min) + "\n" )
             file1.close( )
 
             
@@ -218,7 +218,7 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iters'],output_dir=config['output_dir'],print_level=config['print_level'])
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'])
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']
