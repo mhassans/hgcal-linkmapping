@@ -9,7 +9,7 @@ output_dir: .
 
 study_mapping:
   MappingFile: data/FeMappingV7.txt
-  CMSSW_ModuleHists: data/ROverZHistograms_v11-2.root
+  CMSSW_ModuleHists: data/ROverZHistograms_v11-3.root
   #algorithm: save_root
   algorithm: random_hill_climb
   # algorithm: simulated_annealing

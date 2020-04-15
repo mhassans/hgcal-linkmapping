@@ -85,7 +85,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
-
+    
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
@@ -124,9 +124,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     elif (initial_state == "random"):
         init_state = np.arange(len(minigroups_swap))
         np.random.shuffle(init_state)
-    
-    #init_state = bestsofar
-    # init_state = bestsofar_38
+
     # if (initial_state == "random"):
     #     init_state = np.arange(len(minigroups_swap))
     #     np.random.shuffle(init_state)
@@ -149,6 +147,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundles = getBundles(minigroups_swap,init_state)
 
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
         for sector in bundled_hists:
             for key, value in sector.items():
@@ -157,7 +156,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             sector.Scale(1./24.)
             sector.Write()
         newfile.Close()
-
+        print ("Chi2:",chi2)
         print ("List of Bundles:")
         for b,bundle in enumerate(bundles):
             print ("" )
@@ -168,6 +167,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
                 for lpgbt in lpgbts:
                     print (str(lpgbt) + ", "  , end = '')
 
+        
     elif (algorithm == "random_hill_climb"):
         best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=100000, restarts=0, init_state=init_state, random_state=random_seed)
         bundles = getBundles(minigroups_swap,best_state)
