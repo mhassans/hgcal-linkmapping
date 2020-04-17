@@ -170,10 +170,28 @@ std::pair<float,float> getROverZPhi(float x, float y, float z){
 int main(){
   TH1::SetDefaultSumw2();
   TH1::AddDirectory(kFALSE);
+
+  // TString input_file = "../small_v11_ttbar_200406.root";
+  // TString flat_file_silicon = "words_all_v11_silicon.txt";
+  // TString flat_file_scintillator = "words_all_v11_scintillator.txt";
+
+  TString input_file = "../small_v11_neutrino_gun_200415.root.root";
+  TString flat_file_silicon = "words_all_v11_silicon_neutrino_gun.txt";
+  TString flat_file_scintillator = "words_all_v11_scintillator_neutrino_gun.txt";
+
   //TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
   //TFile * file = new TFile("data/PU200-QG.root","READ");
-  TFile * file = new TFile("data/PU200-3.root","READ");
+  //TFile * file = new TFile("data/PU200-3.root","READ");
+  //  TFile * file = new TFile("../small_v11_ttbar_200406.root","READ");
+
+
+
+
+
+  TFile * file = new TFile(input_file,"READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
+
+  bool createFlatFile = true;
   
   // Declaration of leaf types
   std::vector<int>     *tc_layer = 0;
@@ -259,6 +277,16 @@ int main(){
 	}
       }
     }
+
+
+    std::ofstream f_flattree_silicon;
+    std::ofstream f_flattree_scintillator;
+    if (createFlatFile){
+      f_flattree_silicon.open (flat_file_silicon);
+      f_flattree_scintillator.open (flat_file_scintillator);
+    }
+
+
     
     Int_t nentries = (Int_t)tree->GetEntries();
     Int_t nentries_looped = 0;
@@ -337,6 +365,63 @@ int main(){
 	words_plus_scin.push_back(convert_tcs_to_words(per_event_plus_scin.at(i)));
 	words_minus_scin.push_back(convert_tcs_to_words(per_event_minus_scin.at(i)));	
       }
+
+
+
+
+      //If creating flat text file (for Paul Dauncey's studies)
+      if (createFlatFile){
+	for (int z = 0;z<words_plus_scin.size();z++ ){
+	  
+	  for ( int i = 0; i < 5; i++){
+	    for ( int j = 0; j < 12; j++){
+	      for ( int k = 37; k < 53; k++){
+		f_flattree_scintillator << words_plus_scin.at(z)->GetBinContent(words_plus_scin.at(z)->FindBin(i,j,k)) << " ";
+	      }
+	    }
+	  }
+	  
+	  f_flattree_scintillator <<  std::endl;
+	  
+	  for ( int i = 0; i < 5; i++){
+	    for ( int j = 0; j < 12; j++){
+	      for ( int k = 37; k < 53; k++){
+		f_flattree_scintillator << words_minus_scin.at(z)->GetBinContent(words_minus_scin.at(z)->FindBin(i,j,k)) << " ";
+	      }
+	    }
+	  }
+	  
+	  f_flattree_scintillator <<  std::endl;
+	  
+	}
+	
+	
+	for (int z = 0;z<words_plus.size();z++ ){
+	  
+	  for ( int i = 0; i < 15; i++){
+	    for ( int j = 0; j < 15; j++){
+	      for ( int k = 1; k < 53; k++){
+		f_flattree_silicon << words_plus.at(z)->GetBinContent(words_plus.at(z)->FindBin(i,j,k)) << " ";
+	      }
+	    }
+	  }
+	  
+	  f_flattree_silicon <<  std::endl;
+	  
+	  for ( int i = 0; i < 15; i++){
+	    for ( int j = 0; j < 15; j++){
+	      for ( int k = 1; k < 53; k++){
+		f_flattree_silicon << words_minus.at(z)->GetBinContent(words_minus.at(z)->FindBin(i,j,k)) << " ";
+	      }
+	    }
+	  }
+	  
+	  f_flattree_silicon <<  std::endl;
+	  
+	}
+	
+      }
+
             
       //Add plus and minus sides and all rotated histograms together
       for (int i = 0;i<per_event_plus.size();i++ ){
@@ -360,6 +445,11 @@ int main(){
 	words_minus_scin.at(i)->Delete();
       }
       nentries_looped++;
+    }
+
+    if (createFlatFile){
+      f_flattree_silicon.close();
+      f_flattree_scintillator.close();
     }
 
     out_tcs->Scale(1./double(nentries_looped*6.));

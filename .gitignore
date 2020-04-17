@@ -4,3 +4,4 @@ __pycache__/
 *.root
 extract_data
 rotate
+miniconda3/
