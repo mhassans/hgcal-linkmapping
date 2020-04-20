@@ -8,6 +8,33 @@ from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
 from rotate import rotate_to_sector_0
 import time
 
+def getMiniModuleGroups(data,minigroups_swap):
+
+    minigroups_modules = {}
+    
+    for minigroup_id,lpgbts in minigroups_swap.items():
+
+        module_list = []
+
+        for lpgbt in lpgbts:
+
+            data_list = data[ ((data['TPGId1']==lpgbt) | (data['TPGId2']==lpgbt)) ]
+
+            for index, row in data_list.iterrows():
+
+                if ( row['density']==2 ):
+                    mod = [1, row['u'], row['v'], row['layer']]
+                else:
+                    mod = [0, row['u'], row['v'], row['layer']]
+
+                if mod not in module_list:
+                    module_list.append(mod)
+
+        minigroups_modules[minigroup_id] = module_list
+        
+    return minigroups_modules
+    
+
 def getlpGBTHistsNumpy(data, module_hists):
 
     lpgbt_hists = []
@@ -48,30 +75,24 @@ def getlpGBTHistsNumpy(data, module_hists):
     
     return lpgbt_hists
 
-def getMiniGroupHistsNumpy(lpgbt_hists, minigroups_swap):
+def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
     
     minigroup_hists = []
 
     minigroup_hists_inclusive = {}
     minigroup_hists_phi60 = {}
 
-    for minigroup, lpgbts in minigroups_swap.items():
+    for minigroup, modules in minigroups_modules.items():
         
         inclusive = np.zeros(42)
         phi60 = np.zeros(42)
 
-        for lpgbt in lpgbts:
-            inclusive = inclusive + lpgbt_hists[0][lpgbt]
-            # if ( minigroup == 22):
-            #     print ( lpgbt,lpgbt_hists[0][lpgbt] )
-            #     print ( lpgbt,inclusive )
-
-            phi60 = phi60 + lpgbt_hists[1][lpgbt]
+        for module in modules:
+            inclusive = inclusive + module_hists[0][module[0],module[1],module[2],module[3]]
+            phi60 = phi60 + module_hists[1][module[0],module[1],module[2],module[3]]
 
         minigroup_hists_inclusive[minigroup] = inclusive.copy()
         minigroup_hists_phi60[minigroup] = phi60.copy()
-        #if ( minigroup == 22):
-            #print ( minigroup, minigroup_hists_inclusive[minigroup] )
             
     minigroup_hists.append(minigroup_hists_inclusive)
     minigroup_hists.append(minigroup_hists_phi60)
@@ -140,6 +161,13 @@ def checkFluctuations():
     #Load external data
     data = loadDataFile("data/FeMappingV7.txt") #dataframe    
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
+
+    minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
+
+    # print (minigroups_modules)
+
+    # print (minigroups_swap)
+
     bundles = getBundles(minigroups_swap,init_state)
     #    bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
@@ -164,7 +192,12 @@ def checkFluctuations():
         if entry > 10:
             break
         print ("Event number " + str(entry))
-        start = time.time()
+        #start = time.time()
+
+        for key in ROverZ_per_module.keys():
+            ROverZ_per_module[key] = np.empty(0)
+            ROverZ_per_module_Phi60[key] = np.empty(0)
+
         for u,v,layer,x,y,z,cellu,cellv in zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv):
 
             eta_phi = getROverZPhi(x,y,z)
@@ -183,8 +216,8 @@ def checkFluctuations():
                     ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer],abs(eta_phi[0]))
 
                 
-        end = time.time()
-        print("end of TC manip",end - start)
+        #end = time.time()
+        #print("end of TC manip",end - start)
 
         ROverZ_Inclusive = np.empty(0)
         ROverZ_Inclusive_Phi60 = np.empty(0)
@@ -204,47 +237,50 @@ def checkFluctuations():
         for key,value in ROverZ_per_module_Phi60.items():
             module_hists_phi60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
 
-        end = time.time()
-        print("made all hists",end - start)
-
-            
+        # end = time.time()
+        # print("made all hists",end - start)
+        
+  
+        
         module_hists = [module_hists_inc,module_hists_phi60]
 
         #Should be able to get a list of modules for each minigroup, and then just sum those to save time.
 
-        lpgbt_hists = getlpGBTHistsNumpy(data,module_hists)
+        # lpgbt_hists = getlpGBTHistsNumpy(data,module_hists)
 
-        end = time.time()
-        print("got lpgbt hists",end - start)
+        # end = time.time()
+        # print("got module hists",end - start)
 
         
         # for key,val in lpgbt_hists[0].items():
         #      print (key,val)
 
 
-        minigroup_hists = getMiniGroupHistsNumpy(lpgbt_hists,minigroups_swap)
+        minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
+
+        #print (minigroup_hists[0])
         
-        end = time.time()
-        print("got mg hists",end - start)
+        # end = time.time()
+        # print("got mg hists",end - start)
 
         # for key,mg in minigroup_hists[0].items():
         #     print (key,mg)
         
 
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-        end = time.time()
-        print("got bundled hists",end - start)
+
+        #end = time.time()
+        #print("got bundled hists",end - start)
         
 
 
         
         #print (inclusive_hists[1])
-        # for key,bundle in bundled_lpgbthists[0].items():
-        #     #print (bundle)
-        #     #pl.hist( bundle )
-        #     pl.bar((inclusive_hists[1])[:-1], bundle, width=0.012)
-        #     pl.savefig( "plots/silicon_" + str(key) + ".png" )
-        #     pl.clf()
+        for key,bundle in bundled_lpgbthists[0].items():
+            #print (bundle)
+            pl.bar((inclusive_hists[1])[:-1], bundle, width=0.012)
+            pl.savefig( "plots/entry_" + str(entry) + "silicon_" + str(key) + ".png" )
+            pl.clf()
 
             
         # for i in range (15):
