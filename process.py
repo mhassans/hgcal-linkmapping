@@ -267,8 +267,7 @@ def getMinilpGBTGroups(data):
     minigroups_swap = {}
     
     for index, row in data.iterrows():
-        # if (row['density']==2):#Scintillator
-        #     continue
+
         if (row['nTPG']==0): continue
 
         elif (row['nTPG']==1): 
