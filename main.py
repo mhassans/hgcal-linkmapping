@@ -80,7 +80,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal"):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -88,10 +88,13 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
-    minigroups,minigroups_swap = getMinilpGBTGroups(data)
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+    print("done mini lpgbt groups")
 #    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+    print("done mini hist")
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
+    print("done mini hist root")
 
     
     def mapping_max(state):
@@ -124,6 +127,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     elif (initial_state == "random"):
         init_state = np.arange(len(minigroups_swap))
         np.random.shuffle(init_state)
+    print("test2")
 
     # if (initial_state == "random"):
     #     init_state = np.arange(len(minigroups_swap))
@@ -136,11 +140,15 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     schedule = mlrose.ExpDecay()
     #schedule = mlrose.ArithDecay()
 
-    filename = "bundles_job_" 
+    filename = "bundles_job_"
+    
     if ( len(sys.argv) > 2 ):
-        filename += str(sys.argv[2])
+        runnumber = sys.argv[2]
     else:
-        filename += "default"
+        runnumber = "default"
+
+    filename += runnumber
+    print("test")
 
     if ( algorithm == "save_root" ):
         #Save best combination so far into a root file
@@ -170,7 +178,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         
     elif (algorithm == "random_hill_climb"):
         try:
+            
+            print("testa")
             best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
+            print("testb")
             print (repr(best_state))
             #bundles = getBundles(minigroups_swap,best_state)
             #np.save(output_dir + "/" + filename + ".npy",bundles)
@@ -182,12 +193,15 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             print("interrupt received, stopping and saving")
             
         finally:
+            print("testc")
 
             bundles = getBundles(minigroups_swap,combbest)
+            print("testd")
             np.save(output_dir + "/" + filename + ".npy",bundles)
             file1 = open(output_dir + "/chi2.txt","a")
-            file1.write( "bundles[" + sys.argv[2] + "] = " + str(chi2_min) + "\n" )
+            file1.write( "bundles[" + runnumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
+            print("teste")
 
             
     elif (algorithm == "genetic_alg"):
@@ -218,7 +232,7 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'])
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],minigroup_type=subconfig['minigroup_type'])
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']

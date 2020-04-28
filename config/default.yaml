@@ -1,15 +1,15 @@
 function:
-  study_mapping: False
-  check_for_missing_modules: True
+  study_mapping: True
+  check_for_missing_modules: False
   plot_lpGBTLoads: False
   plot_ModuleLoads: False               
 
-print_level: 0
+print_level: 2
 output_dir: .
 
 study_mapping:
   MappingFile: data/FeMappingV7.txt
-  CMSSW_ModuleHists: data/ROverZHistograms_v11-NG-1.root
+  CMSSW_ModuleHists: data/ROverZHistograms_v11-3.root
   #algorithm: save_root
   algorithm: random_hill_climb
   # algorithm: simulated_annealing
@@ -19,6 +19,8 @@ study_mapping:
   #initial_state: bestsofar_38.npy       
   random_seed: ~
   max_iterations: 100000 
+  minigroup_type: 'layer_by_layer'
+  #minigroup_type: 'minimal'
   
 check_for_missing_modules:
   inCMSSW: True
