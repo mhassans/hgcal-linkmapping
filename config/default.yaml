@@ -9,7 +9,7 @@ output_dir: .
 
 study_mapping:
   MappingFile: data/FeMappingV7.txt
-  CMSSW_ModuleHists: data/ROverZHistograms_v11-3.root
+  CMSSW_ModuleHists: data/ROverZHistograms_v11-NG-1.root
   #algorithm: save_root
   algorithm: random_hill_climb
   # algorithm: simulated_annealing
@@ -19,7 +19,8 @@ study_mapping:
   #initial_state: bestsofar_38.npy       
   random_seed: ~
   max_iterations: 100000 
-  minigroup_type: 'layer_by_layer'
+  #minigroup_type: 'bylayer_silicon_seprated'
+  minigroup_type: 'bylayer'
   #minigroup_type: 'minimal'
   
 check_for_missing_modules:

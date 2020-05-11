@@ -300,12 +300,33 @@ def getMinilpGBTGroups(data, minigroup_type):
 
                     counter+=1
 
-    elif (minigroup_type=='layer_by_layer'):
+    elif (minigroup_type=='bylayer_silicon_seprated'):
+        layer = 1 
         for lpgbt in range(n_lpgbt):
-            layers_connected = list(data["layer"][(data["TPGId1"]==lpgbt) | (data["TPGId2"]==lpgbt)])
-            if(len(dict.fromkeys(layers_connected))!=1):
+            layers_connected_to_lpgbt = list(data["layer"][(data["TPGId1"]==lpgbt) | (data["TPGId2"]==lpgbt)])
+            if(len(dict.fromkeys(layers_connected_to_lpgbt))!=1):
                 print("LpGBT connected to more than one layer. Change algorithm!!")
-            minigroups[lpgbt] = layers_connected[0]
+            
+            if (layer !=layers_connected_to_lpgbt[0]):
+                counter+=1
+            minigroups[lpgbt] = counter
+            layer = layers_connected_to_lpgbt[0]
+            #print(layers_connected_to_lpgbt[0] , counter)
+
+    elif (minigroup_type=='bylayer'):
+        layer = 1
+        for lpgbt in range(n_lpgbt):
+            layers_connected_to_lpgbt = list(data["layer"][(data["TPGId1"]==lpgbt) | (data["TPGId2"]==lpgbt)])
+            if(len(dict.fromkeys(layers_connected_to_lpgbt))!=1):
+                print("LpGBT connected to more than one layer. Change algorithm!!")
+
+            if (layer !=layers_connected_to_lpgbt[0]):
+                counter+=1
+            if(layer ==50 and layers_connected_to_lpgbt[0]==37):
+                counter=22
+            minigroups[lpgbt] = counter
+            layer = layers_connected_to_lpgbt[0]
+            #print(layers_connected_to_lpgbt[0] , counter)
     
     #print(minigroups)
 
