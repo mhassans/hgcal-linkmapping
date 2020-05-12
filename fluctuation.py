@@ -322,7 +322,7 @@ def analyseFluctuations():
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
     
     inclusive = 0
-    for bundle in range(24):
+    for bundle in range(1):
 
         list_over_events = []
         for event in bundled_lpgbthists_allevents:
@@ -330,9 +330,23 @@ def analyseFluctuations():
 
         hist_max = np.maximum.reduce(list_over_events)
         hist_mean = np.mean(list_over_events, axis=0)
+        hist_std = np.std(list_over_events, axis=0)
 
+        for s,std in enumerate(hist_std):
+            hist_std[s] = std + hist_mean[s]
+            
         pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
+
+        pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
+
         pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
+
+
+
+        # for e,event in enumerate(list_over_events):
+        #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
+        #     #if (e>200): break
+        
         pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
         pl.clf()
 
