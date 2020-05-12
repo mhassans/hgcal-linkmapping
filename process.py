@@ -305,7 +305,17 @@ def getMinilpGBTGroups(data):
             minigroups_swap[minigroup]=[lpgbt] 
 
     return minigroups,minigroups_swap
-    
+
+def find_nearest(array, values):
+    indices = []
+    for value in values:
+        array_subtract = array - value
+        index = (np.abs(array_subtract)).argmin()
+        if array_subtract[index] > 0: index+=1
+        indices.append(index)
+        
+    return indices
+
 def getBundles(minigroups_swap,combination):
 
     #Need to divide the minigroups into 24 groups taking into account their different size
@@ -314,7 +324,11 @@ def getBundles(minigroups_swap,combination):
     weights = np.array([ len(minigroups_swap[x])  for x in combination ])
     cumulative_arr = weights.cumsum() / weights.sum()
     #Calculate the indices where to perform the split
-    idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+
+    #Method 1
+    #idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+    #Method 2 (improved)
+    idx = find_nearest(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
 
     bundles = np.array_split(combination,idx)
 
@@ -322,8 +336,7 @@ def getBundles(minigroups_swap,combination):
         weight_bundles = np.array([ len(minigroups_swap[x])  for x in bundle ])
         if (weight_bundles.sum() > 72 ):
             print ( "Error: more than 72 lpgbts in bundle")
-
-    
+            
     return bundles
             
 def getBundledlpgbtHistsRoot(minigroup_hists,bundles):
