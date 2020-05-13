@@ -16,7 +16,7 @@ study_mapping:
   # algorithm: genetic_alg      
   #initial_state: bestsofar
   initial_state: random
-  #initial_state: bestsofar_38.npy       
+  #initial_state: bundles_job_default.npy   
   random_seed: ~
   max_iterations: 100000 
   #minigroup_type: 'bylayer_silicon_seprated'
