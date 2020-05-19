@@ -40,7 +40,8 @@ def getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator):
 
     return data,data_scin
     
-def getModuleHists(HistFile):
+#Legacy function to read ROverZHistograms file with 1D histograms
+def getModuleHists1D(HistFile):
 
     module_hists = []
     inclusive_hists = []
@@ -80,6 +81,57 @@ def getModuleHists(HistFile):
 
     inclusive_hists.append(infiles[-1].Get("ROverZ_Inclusive" ))
     inclusive_hists.append(infiles[-1].Get("ROverZ_Inclusive_Phi60" ))
+                
+    module_hists.append(inclusive)
+    module_hists.append(phi60)
+            
+    return inclusive_hists,module_hists
+
+#Legacy function to read ROverZHistograms file with 1D histograms
+def getModuleHists(HistFile):
+
+    module_hists = []
+    inclusive_hists = []
+    
+    infiles.append(ROOT.TFile.Open(HistFile,"READ"))
+
+    inclusive = {}
+    phi60 = {}
+    
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                
+                PhiVsROverZ = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+                inclusive[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_Inclusive" )  
+                phi60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_Phi60", 1, 6)  #assuming 12 bins
+
+    # for i in range (15): #u
+    #     for j in range (15): #v
+    #         for k in range (53):#layer
+    #             if ( k < 28 and k%2 == 0 ):
+    #                 continue
+    #             phi60[0,i,j,k] = infiles[-1].Get("ROverZ_Phi60_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                PhiVsROverZ = infiles[-1].Get("ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+                inclusive[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_Inclusive" )
+                phi60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_Phi60", 1, 6) #assuming 12 bins
+
+    # for i in range (5): #u
+    #     for j in range (12): #v
+    #         for k in range (37,53):#layer
+    #             phi60[1,i,j,k] = infiles[-1].Get("ROverZ_Phi60_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+
+    
+    PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Inclusive_1D") )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Phi60" , 1, 6) )
                 
     module_hists.append(inclusive)
     module_hists.append(phi60)
