@@ -36,45 +36,45 @@ def getMiniModuleGroups(data,minigroups_swap):
     return minigroups_modules
     
 
-def getlpGBTHistsNumpy(data, module_hists):
+# def getlpGBTHistsNumpy(data, module_hists):
 
-    lpgbt_hists = []
+#     lpgbt_hists = []
 
-    for p,phiselection in enumerate(module_hists):#inclusive and phi < 60
+#     for p,phiselection in enumerate(module_hists):#inclusive and phi < 60
 
-        temp = {}
+#         temp = {}
 
-        for lpgbt in range(0,1600) :
-            lpgbt_found = False
+#         for lpgbt in range(0,1600) :
+#             lpgbt_found = False
 
-            #lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.58);
-            lpgbt_hist = np.zeros(42)
+#             #lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.58);
+#             lpgbt_hist = np.zeros(42)
             
-            for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
+#             for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
 
-                for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
-                    lpgbt_found = True
+#                 for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
+#                     lpgbt_found = True
                     
-                    if (row['density']==2):#Scintillator
+#                     if (row['density']==2):#Scintillator
 
-                        hist = phiselection[ 1, row['u'], row['v'], row['layer'] ] # get module hist
-                    else:
-                        hist = phiselection[ 0, row['u'], row['v'], row['layer'] ] # get module hist        
+#                         hist = phiselection[ 1, row['u'], row['v'], row['layer'] ] # get module hist
+#                     else:
+#                         hist = phiselection[ 0, row['u'], row['v'], row['layer'] ] # get module hist        
 
-                    linkfrac = 'TPGeLinkFrac1'
-                    if ( tpg_index == 'TPGId2' ):
-                        linkfrac = 'TPGeLinkFrac2'
+#                     linkfrac = 'TPGeLinkFrac1'
+#                     if ( tpg_index == 'TPGId2' ):
+#                         linkfrac = 'TPGeLinkFrac2'
 
-                    #lpgbt_hist.Add( hist, row[linkfrac] ) # add module hist with the correct e-link weight
-                    weighted = hist*row[linkfrac]
-                    lpgbt_hist = lpgbt_hist + weighted
+#                     #lpgbt_hist.Add( hist, row[linkfrac] ) # add module hist with the correct e-link weight
+#                     weighted = hist*row[linkfrac]
+#                     lpgbt_hist = lpgbt_hist + weighted
                     
-            if lpgbt_found:
-                temp[lpgbt] = lpgbt_hist
+#             if lpgbt_found:
+#                 temp[lpgbt] = lpgbt_hist
 
-        lpgbt_hists.append(temp)
+#         lpgbt_hists.append(temp)
     
-    return lpgbt_hists
+#     return lpgbt_hists
 
 def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
     
@@ -151,26 +151,24 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations():
+def checkFluctuations(initial_state, cmsswNtuple, dataFile):
 
-    initial_state = "bundles_job_202.npy"
+    #List of which minigroups are assigned to each bundle 
     init_state = np.hstack(np.load(initial_state,allow_pickle=True))
-    rootfile = ROOT.TFile.Open( "data/small_v11_neutrino_gun_200415.root" , "READ" )
+
+    #Load the CMSSW ntuple to get per event and per trigger cell information
+    rootfile = ROOT.TFile.Open( cmsswNtuple , "READ" )
     tree = rootfile.Get("HGCalTriggerNtuple")
 
+    #Load mapping file
+    data = loadDataFile(dataFile) 
 
-    #Load external data
-    data = loadDataFile("data/FeMappingV7.txt") #dataframe    
+    #Get list of which lpgbts are in each minigroup
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
+    #Get list of which modules are in each minigroup
     minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
-
-    # print (minigroups_modules)
-
-    # print (minigroups_swap)
-
     bundles = getBundles(minigroups_swap,init_state)
-    #    bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
     bundled_lpgbthists_allevents = []
     
@@ -196,22 +194,26 @@ def checkFluctuations():
             # if entry > 10:
             #     break
             print ("Event number " + str(entry))
-            #start = time.time()
-
+    
             for key in ROverZ_per_module.keys():
                 ROverZ_per_module[key] = np.empty(0)
                 ROverZ_per_module_Phi60[key] = np.empty(0)
 
+            #Loop over list of trigger cells in a particular
+            #event and fill R/Z histograms for each module
+            #(inclusively and for phi < 60)
+            
             for u,v,layer,x,y,z,cellu,cellv in zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv):
 
                 eta_phi = getROverZPhi(x,y,z)
 
-                if ( u > -990 ):
+                if ( u > -990 ): #Silicon
                     uv = rotate_to_sector_0(u,v,layer)
                     ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(eta_phi[0]))            
                     if (eta_phi[1] < np.pi/3):
                         ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(eta_phi[0]))
-                else:
+
+                else: #Scintillator  
                     eta = cellu
                     phi = cellv
                     etaphi = etaphiMapping(layer,[eta,phi]);
@@ -219,9 +221,6 @@ def checkFluctuations():
                     if (eta_phi[1] < np.pi/3):
                         ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer],abs(eta_phi[0]))
 
-
-            #end = time.time()
-            #print("end of TC manip",end - start)
 
             ROverZ_Inclusive = np.empty(0)
             ROverZ_Inclusive_Phi60 = np.empty(0)
@@ -231,6 +230,7 @@ def checkFluctuations():
             for key,value in ROverZ_per_module_Phi60.items():
                 ROverZ_Inclusive_Phi60 = np.append(ROverZ_Inclusive_Phi60,value)
 
+            #Sum the individual module histograms to get the minigroup histograms
             module_hists_inc = {}
             module_hists_phi60 = {}
             inclusive_hists = np.histogram( ROverZ_Inclusive, bins = 42, range = (0.076,0.58) )
@@ -241,10 +241,6 @@ def checkFluctuations():
             for key,value in ROverZ_per_module_Phi60.items():
                 module_hists_phi60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
 
-            # end = time.time()
-            # print("made all hists",end - start)
-
-
 
             module_hists = [module_hists_inc,module_hists_phi60]
 
@@ -252,59 +248,17 @@ def checkFluctuations():
 
             # lpgbt_hists = getlpGBTHistsNumpy(data,module_hists)
 
-            # end = time.time()
-            # print("got module hists",end - start)
-
-
-            # for key,val in lpgbt_hists[0].items():
-            #      print (key,val)
-
 
             minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
 
-            #print (minigroup_hists[0])
-
-            # end = time.time()
-            # print("got mg hists",end - start)
-
-            # for key,mg in minigroup_hists[0].items():
-            #     print (key,mg)
-
 
             bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-
-            #end = time.time()
-            #print("got bundled hists",end - start)
 
             bundled_lpgbthists_allevents.append(bundled_lpgbthists)
 
 
 
-            # for i in range (15):
-            #     for j in range (15):
-            #         for k in range (1,53):
-            #             if  k < 28 and k%2 == 0:
-            #                 continue
-            #             module_hists[0,i,j,k] = np.histogram( ROverZ_per_module[0,i,j,k], bins = 42, range = (0.076,0.58) )
-                        #hists[0,i,j,k] = pl.hist( ROverZ_per_module[0,i,j,k], bins = 42, range = (0.076,0.58) )
-                        #pl.clf()
-                        #print (hists[0,i,j,k])
-                        #print (ROverZ_per_module[0,i,j,k])
 
-
-
-
-            # for key,value in hists.items():
-            #     #print ("key = ",key)
-            #     #print ("value = ",value)
-            #     if (ROverZ_per_module[0,key[1],key[2],key[3]].size > 0 ):
-            #         #pl.hist( value )
-            #         pl.bar((value[1])[:-1], value[0], width=0.012)
-            #         pl.savefig( "plots/silicon_" + str(key[1]) + "_" + str(key[2]) + "_" + str(key[3]) + ".png" )
-            #         pl.clf()
-
-            # inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
-            # lpgbt_hists = getlpGBTHists(data, module_hists)
     except KeyboardInterrupt:
         print("interrupt received, stopping and saving")
 
@@ -320,39 +274,39 @@ def analyseFluctuations():
         bundled_lpgbthists_allevents = pickle.load(filep)
 
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
-    hists_max = []
+
     
     inclusive = 0
-    # for bundle in range(24):
-
-    #     list_over_events = []
-    #     for event in bundled_lpgbthists_allevents:
-    #         list_over_events.append( event[inclusive][bundle] )
-
-    #     hist_max = np.maximum.reduce(list_over_events)
-    #     hist_mean = np.mean(list_over_events, axis=0)
-    #     hist_std = np.std(list_over_events, axis=0)
-
-    #     for s,std in enumerate(hist_std):
-    #         hist_std[s] = std + hist_mean[s]
-            
-        # pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
-
-        # pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
-
-        # pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
 
 
+    #Plotting Max, mean and standard deviation per bundle:
+    plotMaxMean = False
+    if ( plotMaxMean ):
+        for bundle in range(24):
 
-        ## for e,event in enumerate(list_over_events):
-        ##     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
-        ##     #if (e>200): break
+            list_over_events = []
+            for event in bundled_lpgbthists_allevents:
+                list_over_events.append( event[inclusive][bundle] )
+
+            hist_max = np.maximum.reduce(list_over_events)
+            hist_mean = np.mean(list_over_events, axis=0)
+            hist_std = np.std(list_over_events, axis=0)
+
+            for s,std in enumerate(hist_std):
+                hist_std[s] = std + hist_mean[s]
+
+            pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
+            pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
+            pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
 
 
+            # for e,event in enumerate(list_over_events):
+            #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
+            #     #if (e>200): break
 
-        
-        # pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
-        # pl.clf()
+
+            pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
+            pl.clf()
 
 
 
@@ -373,6 +327,8 @@ def analyseFluctuations():
 
 
     #Loop over all events to get the maximum per bundle
+
+    hists_max = []
     for bundle in range(24):
         list_over_events = []
         for event in bundled_lpgbthists_allevents:
@@ -381,28 +337,65 @@ def analyseFluctuations():
 
     #Find the maximum per bin over all events,
     #Then multiply this by 0.99 for a 1% truncation
-    maxima_hists = []
-    # for b in range (len(hists_max)):
-    #     maxima_hists.append(list(zip(*hists_max))[b])
-    # overall_max = np.amax(maxima_hists, axis=1)
-
-    # print ("1",len(overall_max),overall_max)
+    #maxima_hists = []
 
     overall_max = np.amax(hists_max, axis=0)
-
-    print ("max",overall_max)
+    #print ("max",overall_max)
     overall_max99 = np.round(overall_max*0.99)
-    print(np.sum(overall_max),np.sum(overall_max99))
-
+    overall_max95 = np.round(overall_max*0.95)
+    overall_max90 = np.round(overall_max*0.90)
 
     #Loop back over events, counting the maximum wait time
     #for each bin, with and without truncation
+    maximum_per_event = []
+    maximum_per_event99 = []
+    maximum_per_event95 = []
+    maximum_per_event90 = []
+    
     for event in bundled_lpgbthists_allevents:
-        maximum_per_event = []
 
-        #print ("event = ")
-        a = np.array(list(event[inclusive].values()))
-        m = np.amax(a, axis=0)
-        print(overall_max-m)
+        bundle_hists = np.array(list(event[inclusive].values()))
+        maximum = np.amax(bundle_hists, axis=0)
+        maximum99 = np.where( np.less( overall_max99, maximum ), overall_max99, maximum )
+        maximum95 = np.where( np.less( overall_max95, maximum ), overall_max95, maximum )
+        maximum90 = np.where( np.less( overall_max90, maximum ), overall_max90, maximum )
         
-analyseFluctuations()
+        maximum_per_event.append( np.sum(maximum) )
+        maximum_per_event99.append( np.sum(maximum99) )
+        maximum_per_event95.append( np.sum(maximum95) )
+        maximum_per_event90.append( np.sum(maximum90) )
+
+
+        #print ( "fullmax",maximum  )
+        #print ( "99",maximum99  )
+
+    #print (np.array(maximum_per_event)-np.array(maximum_per_event99))
+    #print (np.array(maximum_per_event)-np.array(maximum_per_event95))
+
+    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event99),40,(0,40),histtype='step',log=True,label='1% truncation')
+    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event95),40,(0,40),histtype='step',log=True,label='5% truncation')
+    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event90),40,(0,40),histtype='step',log=True,label='10% truncation')    
+    pl.xlabel('Number of TCs truncated')
+    pl.ylabel('Number of Events')
+    pl.legend()
+    pl.savefig( "plots/truncation.png" )
+    
+def main():
+
+    
+    #Code to process the input root file,
+    #and to get the bundle R/Z histograms per event
+
+    runCheckFluctuations = True
+    initial_state = "bundles_job_202.npy"
+    cmsswNtuple = "data/small_v11_neutrino_gun_200415.root"
+    dataFile = "data/FeMappingV7.txt"
+    if (runCheckFluctuations):
+        checkFluctuations(initial_state=initial_state, cmsswNtuple=cmsswNtuple, dataFile=dataFile)
+    
+
+    runAnalyseFluctuations = False
+    if (runAnalyseFluctuations):
+        analyseFluctuations()
+
+main()
