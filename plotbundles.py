@@ -26,8 +26,8 @@ phi60_hists = []
 inclusive_hists_ratio = []
 phi60_hists_ratio = []
 
-inclusive = filein.Get("ROverZ_Inclusive")
-phi60 = filein.Get("ROverZ_Inclusive_Phi60")
+inclusive = filein.Get("ROverZ_Inclusive_1D")
+phi60 = filein.Get("ROverZ_Phi60")
 
 for i in range (24):
     inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
