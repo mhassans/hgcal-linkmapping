@@ -320,37 +320,44 @@ def analyseFluctuations():
         bundled_lpgbthists_allevents = pickle.load(filep)
 
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
+    hists_max = []
     
     inclusive = 0
-    for bundle in range(1):
+    # for bundle in range(24):
 
-        list_over_events = []
-        for event in bundled_lpgbthists_allevents:
-            list_over_events.append( event[inclusive][bundle] )
+    #     list_over_events = []
+    #     for event in bundled_lpgbthists_allevents:
+    #         list_over_events.append( event[inclusive][bundle] )
 
-        hist_max = np.maximum.reduce(list_over_events)
-        hist_mean = np.mean(list_over_events, axis=0)
-        hist_std = np.std(list_over_events, axis=0)
+    #     hist_max = np.maximum.reduce(list_over_events)
+    #     hist_mean = np.mean(list_over_events, axis=0)
+    #     hist_std = np.std(list_over_events, axis=0)
 
-        for s,std in enumerate(hist_std):
-            hist_std[s] = std + hist_mean[s]
+    #     for s,std in enumerate(hist_std):
+    #         hist_std[s] = std + hist_mean[s]
             
-        pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
+        # pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
 
-        pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
+        # pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
 
-        pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
+        # pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
 
 
 
-        # for e,event in enumerate(list_over_events):
-        #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
-        #     #if (e>200): break
+        ## for e,event in enumerate(list_over_events):
+        ##     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
+        ##     #if (e>200): break
+
+
+
         
-        pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
-        pl.clf()
+        # pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
+        # pl.clf()
 
 
+
+
+        
     # for entry,event in enumerate(bundled_lpgbthists_allevents):
     #     for key,bundle in event[inclusive].items():
     #         #print (bundle)
@@ -358,8 +365,44 @@ def analyseFluctuations():
     #         pl.savefig( "plots/entry_" + str(entry) + "silicon_" + str(key) + ".png" )
     #         pl.clf()
 
+    # for hist in hists_max:
+    #     pl.bar((inclusive_hists[1])[:-1], hist, width=0.012)
+    # pl.savefig( "plots/maxima.png" )
+    # pl.clf()
 
+
+
+    #Loop over all events to get the maximum per bundle
+    for bundle in range(24):
+        list_over_events = []
+        for event in bundled_lpgbthists_allevents:
+            list_over_events.append( event[inclusive][bundle] )
+        hists_max.append( np.maximum.reduce(list_over_events) )
+
+    #Find the maximum per bin over all events,
+    #Then multiply this by 0.99 for a 1% truncation
+    maxima_hists = []
+    # for b in range (len(hists_max)):
+    #     maxima_hists.append(list(zip(*hists_max))[b])
+    # overall_max = np.amax(maxima_hists, axis=1)
+
+    # print ("1",len(overall_max),overall_max)
+
+    overall_max = np.amax(hists_max, axis=0)
+
+    print ("max",overall_max)
+    overall_max99 = np.round(overall_max*0.99)
+    print(np.sum(overall_max),np.sum(overall_max99))
+
+
+    #Loop back over events, counting the maximum wait time
+    #for each bin, with and without truncation
+    for event in bundled_lpgbthists_allevents:
+        maximum_per_event = []
+
+        #print ("event = ")
+        a = np.array(list(event[inclusive].values()))
+        m = np.amax(a, axis=0)
+        print(overall_max-m)
         
-#checkFluctuations()
-
 analyseFluctuations()
