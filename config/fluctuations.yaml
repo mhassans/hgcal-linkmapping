@@ -1,0 +1,18 @@
+function:
+  checkFluctuations: False
+  plot_MeanMax: False
+  plot_Truncation: True
+
+print_level: 0
+output_dir: .
+
+checkFluctuations:
+  initial_state: bundles_job_202.npy
+  cmsswNtuple: data/small_v11_neutrino_gun_200415.root
+  mappingFile: data/FeMappingV7.txt
+
+plot_MeanMax:
+  eventData: alldata_1528.txt
+
+plot_Truncation:
+  eventData: alldata_1528.txt

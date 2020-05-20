@@ -8,6 +8,8 @@ from process import loadDataFile
 from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
 from rotate import rotate_to_sector_0
 import time
+import yaml
+import sys
 
 def getMiniModuleGroups(data,minigroups_swap):
 
@@ -151,7 +153,7 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations(initial_state, cmsswNtuple, dataFile):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile):
 
     #List of which minigroups are assigned to each bundle 
     init_state = np.hstack(np.load(initial_state,allow_pickle=True))
@@ -161,7 +163,7 @@ def checkFluctuations(initial_state, cmsswNtuple, dataFile):
     tree = rootfile.Get("HGCalTriggerNtuple")
 
     #Load mapping file
-    data = loadDataFile(dataFile) 
+    data = loadDataFile(mappingFile) 
 
     #Get list of which lpgbts are in each minigroup
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
@@ -308,7 +310,7 @@ def plotMeanMax(eventData):
     pl.clf()
 
 
-def plotTruncation():
+def plotTruncation(eventData):
     #Load pickled per-event bundle histograms
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
@@ -384,28 +386,34 @@ def plotTruncation():
     
 def main():
 
-    
+    try:
+        config_file = sys.argv[1]
+    except IndexError:
+         print ("Please give valid config file")
+         exit()
+    try:
+        with open(config_file,'r') as file:
+            config = yaml.load(file,Loader=yaml.FullLoader)
+    except EnvironmentError:
+        print ("Please give valid config file")
+        exit()
+        
     #Code to process the input root file,
     #and to get the bundle R/Z histograms per event
 
-    runCheckFluctuations = False
-    initial_state = "bundles_job_202.npy"
-    cmsswNtuple = "data/small_v11_neutrino_gun_200415.root"
-    dataFile = "data/FeMappingV7.txt"
-    if (runCheckFluctuations):
-        checkFluctuations(initial_state=initial_state, cmsswNtuple=cmsswNtuple, dataFile=dataFile)
+    if (config['function']['checkFluctuations']):
+        subconfig = config['checkFluctuations']
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'])
 
     #Plotting functions
 
-    runPlotMeanMax = False
-    runPlotTruncation = True
-    eventData = "alldata_1528.txt"
+    if (config['function']['plot_MeanMax']):
+        subconfig = config['plot_MeanMax']
+        plotMeanMax(eventData = subconfig['eventData'])
 
-    if (runPlotMeanMax):
-        plotMeanMax(eventData = eventData)
-
-    if (runPlotTruncation):
-        plotTruncation(eventData = eventData)
+    if (config['function']['plot_Truncation']):
+        subconfig = config['plot_Truncation']
+        plotTruncation(eventData = subconfig['eventData'])
         
     
 main()
