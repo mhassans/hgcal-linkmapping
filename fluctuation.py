@@ -230,7 +230,7 @@ def checkFluctuations(initial_state, cmsswNtuple, dataFile):
             for key,value in ROverZ_per_module_Phi60.items():
                 ROverZ_Inclusive_Phi60 = np.append(ROverZ_Inclusive_Phi60,value)
 
-            #Sum the individual module histograms to get the minigroup histograms
+            #Bin the TC module data
             module_hists_inc = {}
             module_hists_phi60 = {}
             inclusive_hists = np.histogram( ROverZ_Inclusive, bins = 42, range = (0.076,0.58) )
@@ -241,22 +241,15 @@ def checkFluctuations(initial_state, cmsswNtuple, dataFile):
             for key,value in ROverZ_per_module_Phi60.items():
                 module_hists_phi60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
 
-
             module_hists = [module_hists_inc,module_hists_phi60]
 
-            #Should be able to get a list of modules for each minigroup, and then just sum those to save time.
-
-            # lpgbt_hists = getlpGBTHistsNumpy(data,module_hists)
-
-
+            #Sum the individual module histograms to get the minigroup histograms
             minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
 
-
+            #Sum the minigroup histograms to get the bundle histograms
             bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
             bundled_lpgbthists_allevents.append(bundled_lpgbthists)
-
-
 
 
     except KeyboardInterrupt:
@@ -264,70 +257,71 @@ def checkFluctuations(initial_state, cmsswNtuple, dataFile):
 
     finally:
 
-        with open("alldata.txt", "wb") as filep:   #Pickling
+        #Write all data to file for later analysis (Pickling)
+        with open("alldata.txt", "wb") as filep:
             pickle.dump(bundled_lpgbthists_allevents, filep)
 
 
 
-def analyseFluctuations():
-    with open("alldata_1528.txt", "rb") as filep:   #Pickling
+def plotMeanMax(eventData):
+    #Load pickled per-event bundle histograms
+    with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
 
+    #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
 
-    
+    #Names for inclusive and phi < 60 indices
     inclusive = 0
-
+    phi60 = 1
 
     #Plotting Max, mean and standard deviation per bundle:
-    plotMaxMean = False
-    if ( plotMaxMean ):
-        for bundle in range(24):
+    for bundle in range(24):
 
-            list_over_events = []
-            for event in bundled_lpgbthists_allevents:
-                list_over_events.append( event[inclusive][bundle] )
+        list_over_events = []
+        for event in bundled_lpgbthists_allevents:
+            list_over_events.append( event[inclusive][bundle] )
 
-            hist_max = np.maximum.reduce(list_over_events)
-            hist_mean = np.mean(list_over_events, axis=0)
-            hist_std = np.std(list_over_events, axis=0)
+        hist_max = np.maximum.reduce(list_over_events)
+        hist_mean = np.mean(list_over_events, axis=0)
+        hist_std = np.std(list_over_events, axis=0)
 
-            for s,std in enumerate(hist_std):
-                hist_std[s] = std + hist_mean[s]
+        for s,std in enumerate(hist_std):
+            hist_std[s] = std + hist_mean[s]
 
-            pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
-            pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
-            pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
+        pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
+        pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
+        pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
 
+        #Plot all events for a given bundle on the same plot
+        # for e,event in enumerate(list_over_events):
+        #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
+        #     #if (e>200): break
 
-            # for e,event in enumerate(list_over_events):
-            #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
-            #     #if (e>200): break
+        pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
+        pl.clf()
 
-
-            pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
-            pl.clf()
-
-
-
-
-        
-    # for entry,event in enumerate(bundled_lpgbthists_allevents):
-    #     for key,bundle in event[inclusive].items():
-    #         #print (bundle)
-    #         pl.bar((inclusive_hists[1])[:-1], bundle, width=0.012)
-    #         pl.savefig( "plots/entry_" + str(entry) + "silicon_" + str(key) + ".png" )
-    #         pl.clf()
-
-    # for hist in hists_max:
-    #     pl.bar((inclusive_hists[1])[:-1], hist, width=0.012)
-    # pl.savefig( "plots/maxima.png" )
-    # pl.clf()
+    #Plot maxima for all bundles on the same plot
+    for hist in hists_max:
+        pl.bar((inclusive_hists[1])[:-1], hist, width=0.012)
+    pl.savefig( "plots/maxima.png" )
+    pl.clf()
 
 
+def plotTruncation():
+    #Load pickled per-event bundle histograms
+    with open(eventData, "rb") as filep:   
+        bundled_lpgbthists_allevents = pickle.load(filep)
 
+    #To get binning for r/z histograms
+    inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
+
+    #Names for inclusive and phi < 60 indices
+    inclusive = 0
+    phi60 = 1
+    
     #Loop over all events to get the maximum per bundle
-
+    
     hists_max = []
     for bundle in range(24):
         list_over_events = []
@@ -340,7 +334,6 @@ def analyseFluctuations():
     #maxima_hists = []
 
     overall_max = np.amax(hists_max, axis=0)
-    #print ("max",overall_max)
     overall_max99 = np.round(overall_max*0.99)
     overall_max95 = np.round(overall_max*0.95)
     overall_max90 = np.round(overall_max*0.90)
@@ -351,30 +344,39 @@ def analyseFluctuations():
     maximum_per_event99 = []
     maximum_per_event95 = []
     maximum_per_event90 = []
-    
+
     for event in bundled_lpgbthists_allevents:
 
         bundle_hists = np.array(list(event[inclusive].values()))
-        maximum = np.amax(bundle_hists, axis=0)
-        maximum99 = np.where( np.less( overall_max99, maximum ), overall_max99, maximum )
-        maximum95 = np.where( np.less( overall_max95, maximum ), overall_max95, maximum )
-        maximum90 = np.where( np.less( overall_max90, maximum ), overall_max90, maximum )
+
+        maximum = []
+        maximum99 = []
+        maximum95 = []
+        maximum90 = []
         
-        maximum_per_event.append( np.sum(maximum) )
+        for bundle in bundle_hists:
+
+            #If a given r/z bin is greater than the maximum allowed by truncation then set to the truncated value
+            maximum99.append ( np.where( np.less( overall_max99, bundle ), overall_max99, bundle )  )
+            maximum95.append ( np.where( np.less( overall_max95, bundle ), overall_max95, bundle )  )
+            maximum90.append ( np.where( np.less( overall_max90, bundle ), overall_max90, bundle )  )
+            
+        
+        maximum_per_event.append( np.sum(bundle_hists) )
         maximum_per_event99.append( np.sum(maximum99) )
         maximum_per_event95.append( np.sum(maximum95) )
         maximum_per_event90.append( np.sum(maximum90) )
 
 
-        #print ( "fullmax",maximum  )
-        #print ( "99",maximum99  )
+    print ("Maximum TC in any event = ", np.amax(maximum_per_event))
+    print ("Maximum TC in any event with 1% truncation = ", np.amax(maximum_per_event99))
+    print ("Maximum TC in any event with 5% truncation = ", np.amax(maximum_per_event95))
+    print ("Maximum TC in any event with 10% truncation = ", np.amax(maximum_per_event90))
+           
 
-    #print (np.array(maximum_per_event)-np.array(maximum_per_event99))
-    #print (np.array(maximum_per_event)-np.array(maximum_per_event95))
-
-    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event99),40,(0,40),histtype='step',log=True,label='1% truncation')
-    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event95),40,(0,40),histtype='step',log=True,label='5% truncation')
-    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event90),40,(0,40),histtype='step',log=True,label='10% truncation')    
+    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event99),55,(0,55),histtype='step',log=True,label='1% truncation')
+    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event95),55,(0,55),histtype='step',log=True,label='5% truncation')
+    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event90),55,(0,55),histtype='step',log=True,label='10% truncation')    
     pl.xlabel('Number of TCs truncated')
     pl.ylabel('Number of Events')
     pl.legend()
@@ -386,16 +388,24 @@ def main():
     #Code to process the input root file,
     #and to get the bundle R/Z histograms per event
 
-    runCheckFluctuations = True
+    runCheckFluctuations = False
     initial_state = "bundles_job_202.npy"
     cmsswNtuple = "data/small_v11_neutrino_gun_200415.root"
     dataFile = "data/FeMappingV7.txt"
     if (runCheckFluctuations):
         checkFluctuations(initial_state=initial_state, cmsswNtuple=cmsswNtuple, dataFile=dataFile)
+
+    #Plotting functions
+
+    runPlotMeanMax = False
+    runPlotTruncation = True
+    eventData = "alldata_1528.txt"
+
+    if (runPlotMeanMax):
+        plotMeanMax(eventData = eventData)
+
+    if (runPlotTruncation):
+        plotTruncation(eventData = eventData)
+        
     
-
-    runAnalyseFluctuations = False
-    if (runAnalyseFluctuations):
-        analyseFluctuations()
-
 main()
