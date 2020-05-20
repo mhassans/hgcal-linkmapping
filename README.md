@@ -20,6 +20,7 @@ Then each time you start a new session run: `source start_mapping_env.sh`
 Main file containing the option to run all functions:
 - `plot_lpGBTLoads`, `plot_ModuleLoads`, : Processes MC event data and determines the average number of TCs, or words, per lpGBT
 - `study_mapping`, :  Find the optimised way of assigning lpGBTs to bundles 
+
 Run using the config file `config/default.yaml`
 
 ## `process.py`
