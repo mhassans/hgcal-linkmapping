@@ -325,61 +325,57 @@ def plotTruncation(eventData):
     #Loop over all events to get the maximum per bundle
     
     hists_max = []
-    for bundle in range(24):
-        list_over_events = []
-        for event in bundled_lpgbthists_allevents:
-            list_over_events.append( event[inclusive][bundle] )
-        hists_max.append( np.maximum.reduce(list_over_events) )
+
+    for event in bundled_lpgbthists_allevents:
+        bundle_hists = np.array(list(event[inclusive].values()))
+        hists_max.append(np.amax(bundle_hists,axis=0))
 
     #Find the maximum per bin over all events,
-    #Then multiply this by 0.99 for a 1% truncation
-    #maxima_hists = []
+    #Then find the 99th percentile for a 1% truncation
 
-    overall_max = np.amax(hists_max, axis=0)
-    overall_max99 = np.round(overall_max*0.99)
-    overall_max95 = np.round(overall_max*0.95)
-    overall_max90 = np.round(overall_max*0.90)
+    overall_max = np.amax(hists_max, axis=0)    
 
+    overall_max99p = np.round(np.percentile(hists_max,99,axis=0))
+    overall_max95p = np.round(np.percentile(hists_max,95,axis=0))
+    overall_max90p = np.round(np.percentile(hists_max,90,axis=0))
+    
     #Loop back over events, counting the maximum wait time
     #for each bin, with and without truncation
-    maximum_per_event = []
-    maximum_per_event99 = []
-    maximum_per_event95 = []
-    maximum_per_event90 = []
+    total_per_event = []
+    total_per_event99 = []
+    total_per_event95 = []
+    total_per_event90 = []
 
     for event in bundled_lpgbthists_allevents:
 
         bundle_hists = np.array(list(event[inclusive].values()))
 
-        maximum = []
-        maximum99 = []
-        maximum95 = []
-        maximum90 = []
+        sum99 = []
+        sum95 = []
+        sum90 = []
         
         for bundle in bundle_hists:
-
+            
             #If a given r/z bin is greater than the maximum allowed by truncation then set to the truncated value
-            maximum99.append ( np.where( np.less( overall_max99, bundle ), overall_max99, bundle )  )
-            maximum95.append ( np.where( np.less( overall_max95, bundle ), overall_max95, bundle )  )
-            maximum90.append ( np.where( np.less( overall_max90, bundle ), overall_max90, bundle )  )
+            sum99.append ( np.where( np.less( overall_max99p, bundle ), overall_max99p, bundle )  )
+            sum95.append ( np.where( np.less( overall_max95p, bundle ), overall_max95p, bundle )  )
+            sum90.append ( np.where( np.less( overall_max90p, bundle ), overall_max90p, bundle )  )
             
         
-        maximum_per_event.append( np.sum(bundle_hists) )
-        maximum_per_event99.append( np.sum(maximum99) )
-        maximum_per_event95.append( np.sum(maximum95) )
-        maximum_per_event90.append( np.sum(maximum90) )
+        total_per_event.append( np.sum(bundle_hists, axis=1 ))
+        total_per_event99.append( np.sum(sum99, axis=1 ))
+        total_per_event95.append( np.sum(sum95, axis=1 ))
+        total_per_event90.append( np.sum(sum90, axis=1 ))
 
-
-    print ("Maximum TC in any event = ", np.amax(maximum_per_event))
-    print ("Maximum TC in any event with 1% truncation = ", np.amax(maximum_per_event99))
-    print ("Maximum TC in any event with 5% truncation = ", np.amax(maximum_per_event95))
-    print ("Maximum TC in any event with 10% truncation = ", np.amax(maximum_per_event90))
-           
-
-    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event99),55,(0,55),histtype='step',log=True,label='1% truncation')
-    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event95),55,(0,55),histtype='step',log=True,label='5% truncation')
-    pl.hist(np.array(maximum_per_event)-np.array(maximum_per_event90),55,(0,55),histtype='step',log=True,label='10% truncation')    
-    pl.xlabel('Number of TCs truncated')
+    print ("Maximum TC in any bundle in any event = ", np.round(np.amax(total_per_event)/6))
+    print ("Maximum TC in any bundle in any event with 1% truncation = ", np.round(np.amax(total_per_event99)/6))
+    print ("Maximum TC in any bundle in any event with 5% truncation = ", np.round(np.amax(total_per_event95)/6))
+    print ("Maximum TC in any bundle in any event with 10% truncation = ", np.round(np.amax(total_per_event90)/6))
+    
+    pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='1% truncation')
+    pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='5% truncation')
+    pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event90),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='10% truncation')    
+    pl.xlabel('Number of TCs truncated on average per bundle')
     pl.ylabel('Number of Events')
     pl.legend()
     pl.savefig( "plots/truncation.png" )
