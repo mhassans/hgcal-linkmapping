@@ -270,8 +270,9 @@ def plotMeanMax(eventData):
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
 
+    nbins = 42
     #To get binning for r/z histograms
-    inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
+    inclusive_hists = np.histogram( np.empty(0), bins = nbins, range = (0.076,0.58) )
 
     #Names for inclusive and phi < 60 indices
     inclusive = 0
@@ -280,13 +281,14 @@ def plotMeanMax(eventData):
     hists_max = [] 
     
     #Plotting Max, mean and standard deviation per bundle:
+
     for bundle in range(24):
 
-        list_over_events = []
-        for event in bundled_lpgbthists_allevents:
-            list_over_events.append( event[inclusive][bundle] )
-
-        hist_max = np.maximum.reduce(list_over_events)
+        list_over_events = np.empty(((len(bundled_lpgbthists_allevents)),nbins))
+        for e,event in enumerate(bundled_lpgbthists_allevents):
+            list_over_events[e] = np.array(event[inclusive][bundle])/6
+            
+        hist_max = np.amax(list_over_events,axis=0)
         hist_mean = np.mean(list_over_events, axis=0)
         hist_std = np.std(list_over_events, axis=0)
 
@@ -310,6 +312,8 @@ def plotMeanMax(eventData):
     #Plot maxima for all bundles on the same plot
     for hist in hists_max:
         pl.bar((inclusive_hists[1])[:-1], hist, width=0.012)
+    pl.xlabel('r/z')
+    pl.ylabel('Maximum number of TCs per bin')
     pl.savefig( "plots/maxima.png" )
     pl.clf()
 
@@ -329,7 +333,6 @@ def plotTruncation(eventData):
     #Loop over all events to get the maximum per bundle
     
     hists_max = []
-
     for event in bundled_lpgbthists_allevents:
         bundle_hists = np.array(list(event[inclusive].values()))
         hists_max.append(np.amax(bundle_hists,axis=0))
