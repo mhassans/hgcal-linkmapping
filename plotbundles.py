@@ -58,7 +58,7 @@ def print_ratio_plot(inclusive,individual,ratio,plotname):
     inclusive.SetTitle(";r/z;Number of entries")
     inclusive.Draw("HIST")
     ROOT.gStyle.SetOptStat(0)
-    inclusive.SetMaximum(500E3)
+    inclusive.SetMaximum(800E3)
     inclusive.GetYaxis().SetTitleOffset(1.9);
     inclusive.GetYaxis().SetTitleFont(43);
     inclusive.GetYaxis().SetLabelFont(43);
