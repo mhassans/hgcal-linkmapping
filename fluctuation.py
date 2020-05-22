@@ -277,6 +277,8 @@ def plotMeanMax(eventData):
     inclusive = 0
     phi60 = 1
 
+    hists_max = [] 
+    
     #Plotting Max, mean and standard deviation per bundle:
     for bundle in range(24):
 
@@ -303,6 +305,8 @@ def plotMeanMax(eventData):
         pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
         pl.clf()
 
+        hists_max.append(hist_max)
+        
     #Plot maxima for all bundles on the same plot
     for hist in hists_max:
         pl.bar((inclusive_hists[1])[:-1], hist, width=0.012)
