@@ -151,6 +151,10 @@ std::pair<float,float> getEtaPhi(float x, float y, float z){
 }
 std::pair<float,float> getROverZPhi(float x, float y, float z){
 
+  if ( z < 0 ){
+    x *= -1;
+  }
+  
   float r = std::sqrt( x*x + y*y  );
   float phi = std::atan2(y,x);
 
