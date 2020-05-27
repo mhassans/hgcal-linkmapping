@@ -136,12 +136,14 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     schedule = mlrose.ExpDecay()
     #schedule = mlrose.ArithDecay()
 
-    filename = "bundles_job_" 
+    filename = "bundles_job_"
+    filenumber = ""
     if ( len(sys.argv) > 2 ):
-        filename += str(sys.argv[2])
+        filenumber = str(sys.argv[2])
     else:
-        filename += "default"
-
+        filenumber = "default"
+    filename+=filenumber
+        
     if ( algorithm == "save_root" ):
         #Save best combination so far into a root file
         bundles = getBundles(minigroups_swap,init_state)
@@ -149,6 +151,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
+        np.save(output_dir + "/" + filename + ".npy",bundles)
         for sector in bundled_hists:
             for key, value in sector.items():
                 value.Write()
@@ -186,7 +189,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             bundles = getBundles(minigroups_swap,combbest)
             np.save(output_dir + "/" + filename + ".npy",bundles)
             file1 = open(output_dir + "/chi2.txt","a")
-            file1.write( "bundles[" + sys.argv[2] + "] = " + str(chi2_min) + "\n" )
+            file1.write( "bundles[" + filenumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
 
             

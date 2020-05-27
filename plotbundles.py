@@ -3,6 +3,23 @@ import ROOT
 
 filein = ROOT.TFile("lpgbt_10.root")
 
+#Possible simpler implementation:
+
+# initial_state = "bundles_job_default.npy"
+# init_state = np.hstack(np.load(initial_state))
+# MappingFile = "data/FeMappingV7.txt"
+# data = loadDataFile(MappingFile) #dataframe    
+# minigroups,minigroups_swap = getMinilpGBTGroups(data)
+# bundles = getBundles(minigroups_swap,init_state)
+# bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+# for i,hist in enumerate(bundled_hists[0]):
+#     inclusive_hists.append(hist)
+#     inclusive_hists_ratio.append(hist.Clone("inclusive_ratio_" + str(i) ))
+
+# for hist in bundled_hists[1]:
+#     phi60_hists.append(hist)
+#     phi60_hists_ratio.append(hist.Clone("phi60_ratio_" + str(i) ))
+
 inclusive_hists = []
 phi60_hists = []
 
@@ -41,7 +58,7 @@ def print_ratio_plot(inclusive,individual,ratio,plotname):
     inclusive.SetTitle(";r/z;Number of entries")
     inclusive.Draw("HIST")
     ROOT.gStyle.SetOptStat(0)
-    inclusive.SetMaximum(500E3)
+    inclusive.SetMaximum(800E3)
     inclusive.GetYaxis().SetTitleOffset(1.9);
     inclusive.GetYaxis().SetTitleFont(43);
     inclusive.GetYaxis().SetLabelFont(43);
