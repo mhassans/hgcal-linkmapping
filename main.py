@@ -118,16 +118,17 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         return chi2
 
     
-    init_state = bestsofar
-    if (initial_state[-3:] == ".npy"):
-        init_state = np.hstack(np.load(initial_state))
+    init_state = []
+    if (initial_state == "best_so_far"):
+        init_state = bestsofar
+    if (initial_state[-4:] == ".npy"):
+        print (initial_state)
+        init_state = np.hstack(np.load(initial_state,allow_pickle=True))
     elif (initial_state == "random"):
-        init_state = np.arange(len(minigroups_swap))
-        np.random.shuffle(init_state)
+       init_state = np.arange(len(minigroups_swap))
+       np.random.shuffle(init_state)
 
-    # if (initial_state == "random"):
-    #     init_state = np.arange(len(minigroups_swap))
-    #     np.random.shuffle(init_state)
+       
     fitness_cust = mlrose.CustomFitness(mapping_max)
     # Define optimization problem object
     problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = len(minigroups_swap), minigroups = minigroups_swap)
@@ -173,13 +174,9 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         
     elif (algorithm == "random_hill_climb"):
         try:
+
             best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
             print (repr(best_state))
-            #bundles = getBundles(minigroups_swap,best_state)
-            #np.save(output_dir + "/" + filename + ".npy",bundles)
-            # file1 = open(output_dir + "/chi2.txt","a")
-            # file1.write( filename + " " + str(best_fitness) + "\n" )
-            # file1.close( )
 
         except KeyboardInterrupt:
             print("interrupt received, stopping and saving")
