@@ -353,10 +353,16 @@ def plotTruncation(eventData):
     total_per_event95 = []
     total_per_event90 = []
 
+    max_per_event_perbin = []
+    max_per_event_perbin99 = []
+    max_per_event_perbin90 = []
+    max_per_event_perbin95 = []
+    
     for event in bundled_lpgbthists_allevents:
 
         bundle_hists = np.array(list(event[inclusive].values()))
-
+        #24 arrays, with length of 42
+        
         sum99 = []
         sum95 = []
         sum90 = []
@@ -367,17 +373,24 @@ def plotTruncation(eventData):
             sum99.append ( np.where( np.less( overall_max99p, bundle ), overall_max99p, bundle )  )
             sum95.append ( np.where( np.less( overall_max95p, bundle ), overall_max95p, bundle )  )
             sum90.append ( np.where( np.less( overall_max90p, bundle ), overall_max90p, bundle )  )
-            
         
-        total_per_event.append( np.sum(bundle_hists, axis=1 ))
+        total_per_event.append( np.sum(bundle_hists, axis=1 ))        #array with length of 24 (sum over the 42 bins)
         total_per_event99.append( np.sum(sum99, axis=1 ))
         total_per_event95.append( np.sum(sum95, axis=1 ))
         total_per_event90.append( np.sum(sum90, axis=1 ))
 
-    print ("Maximum TC in any bundle in any event = ", np.round(np.amax(total_per_event)/6))
-    print ("Maximum TC in any bundle in any event with 1% truncation = ", np.round(np.amax(total_per_event99)/6))
-    print ("Maximum TC in any bundle in any event with 5% truncation = ", np.round(np.amax(total_per_event95)/6))
-    print ("Maximum TC in any bundle in any event with 10% truncation = ", np.round(np.amax(total_per_event90)/6))
+        max_per_event_perbin.append( np.amax(bundle_hists, axis=0 ) )
+        max_per_event_perbin99.append( np.amax(sum99, axis=0 ) )
+        max_per_event_perbin95.append( np.amax(sum95, axis=0 ) )
+        max_per_event_perbin90.append( np.amax(sum90, axis=0 ) )
+
+        
+    print ("Maximum TC in any bundle in any event (per bin) = ", np.round(np.amax(max_per_event_perbin,axis=0)/6))
+    print ("Sum of per-bin maximum TC (over bundles and events) = ",  np.round(np.sum(np.amax(max_per_event_perbin,axis=0)/6)))
+    print ("Sum of per-bin maximum TC (over bundles and events) with 1% truncation =", np.round(np.sum(np.amax(max_per_event_perbin99,axis=0)/6)))
+    print ("Sum of per-bin maximum TC (over bundles and events) with 5% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin95,axis=0)/6)))
+    print ("Sum of per-bin maximum TC (over bundles and events) with 10% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin90,axis=0)/6)))
+    
     
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='1% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='5% truncation')
