@@ -80,7 +80,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal"):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -88,7 +88,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
-    minigroups,minigroups_swap = getMinilpGBTGroups(data)
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
 #    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
@@ -218,7 +218,7 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'])
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],minigroup_type=subconfig['minigroup_type'])
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']
