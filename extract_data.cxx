@@ -151,6 +151,10 @@ std::pair<float,float> getEtaPhi(float x, float y, float z){
 }
 std::pair<float,float> getROverZPhi(float x, float y, float z){
 
+  if ( z < 0 ){
+    x *= -1;
+  }
+  
   float r = std::sqrt( x*x + y*y  );
   float phi = std::atan2(y,x);
 
@@ -181,17 +185,14 @@ int main(){
 
   //TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
   //TFile * file = new TFile("data/PU200-QG.root","READ");
-  //TFile * file = new TFile("data/PU200-3.root","READ");
   //  TFile * file = new TFile("../small_v11_ttbar_200406.root","READ");
-
-
-
 
 
   TFile * file = new TFile(input_file,"READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
 
   bool createFlatFile = false;
+  int nPhiBins = 12;
   
   // Declaration of leaf types
   std::vector<int>     *tc_layer = 0;
@@ -250,19 +251,15 @@ int main(){
 
     //R/Z Histograms
 
-    TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,12,0,2*M_PI/3);
-    //TH1D * ROverZ_Inclusive_Phi60 = new TH1D("ROverZ_Inclusive_Phi60","",42,0.076,0.58);
+    TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
     std::map<std::tuple<int,int,int,int>,TH2D*> ROverZ_per_module;
-    //std::map<std::tuple<int,int,int,int>,TH1D*> ROverZ_per_module_Phi60;
     //Create one for each module (silicon at first)
     for ( int i = 0; i < 15; i++){//u
       for ( int j = 0; j < 15; j++){//v
 	for ( int k = 1; k < 53; k++){//layer
 
 	  if ( k < 28 && k%2 == 0 ) continue;
-	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,12,0,2*M_PI/3);
-	  //ROverZ_per_module_Phi60[std::make_tuple(0,i,j,k)] = new TH1D( ("ROverZ_Phi60_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58);
-	  
+	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
 	}
       }
     }
@@ -271,8 +268,7 @@ int main(){
       for ( int j = 0; j < 12; j++){
 	for ( int k = 37; k < 53; k++){
 
-	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH2D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,12,0,2*M_PI/3);
-	  //ROverZ_per_module_Phi60[std::make_tuple(1,i,j,k)] = new TH1D( ("ROverZ_Phi60_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58);
+	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH2D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
 
 	}
       }
@@ -305,9 +301,6 @@ int main(){
 	std::pair<float,float> eta_phi = getROverZPhi(tc_x->at(j),tc_y->at(j),tc_z->at(j));
 	
 	ROverZ_Inclusive->Fill(std::abs(eta_phi.first),eta_phi.second);
-	// if ( eta_phi.second < M_PI/3 )
-	//   ROverZ_Inclusive_Phi60->Fill(std::abs(eta_phi.first));
-
 	
 	if ( u > -990 ){//Silicon
 	  std::pair<int,int> uv = std::make_pair(u,v);
@@ -320,11 +313,7 @@ int main(){
 	    per_event_minus.at(sector)->Fill(uv.first , uv.second, tc_layer->at(j) );
 	  }
 
-
 	  ROverZ_per_module[std::make_tuple(0,uv.first,uv.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first),eta_phi.second);
-	  // if ( eta_phi.second < M_PI/3 )
-	  //   ROverZ_per_module_Phi60[std::make_tuple(0,uv.first,uv.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
-	      
 	  
 	}
 	else{
@@ -340,12 +329,7 @@ int main(){
 	    per_event_minus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
 	  }
 
-
 	  ROverZ_per_module[std::make_tuple(1,etaphi.first,etaphi.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first),eta_phi.second);
-	  // if ( eta_phi.second < M_PI/3 )
-	  //   ROverZ_per_module_Phi60[std::make_tuple(1,etaphi.first,etaphi.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first));
-
-
 
 	}
 
@@ -462,17 +446,13 @@ int main(){
     TFile * file_out = new TFile("ROverZHistograms.root","RECREATE");
     file_out->cd();
     ROverZ_Inclusive->Write();
-    //    ROverZ_Inclusive_Phi60->Write();
 
     for (auto& x: ROverZ_per_module) {
       x.second->Write();
     }
-    // for (auto& x: ROverZ_per_module_Phi60) {
-    //   x.second->Write();
-    // }
 
     file_out->Close();
-    //out_words->SaveAs("hist.root");
+
     //Create output csv
     std::ofstream fout;
     fout.open ("average_tcs_sil.csv");
