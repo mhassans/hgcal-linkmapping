@@ -350,7 +350,6 @@ def getMinilpGBTGroups(data, minigroup_type):
                 counter+=1
             minigroups[lpgbt] = counter
             layer = layers_connected_to_lpgbt[0]
-            #print(layers_connected_to_lpgbt[0] , counter)
 
     elif (minigroup_type=='bylayer'):
         layer = 1
@@ -364,9 +363,7 @@ def getMinilpGBTGroups(data, minigroup_type):
             if(layer ==50 and layers_connected_to_lpgbt[0]==37):
                 counter=22
             minigroups[lpgbt] = counter
-            layer = layers_connected_to_lpgbt[0]
-            #print(layers_connected_to_lpgbt[0] , counter)
-    
+            layer = layers_connected_to_lpgbt[0]    
 
     for lpgbt, minigroup in minigroups.items(): 
         if minigroup in minigroups_swap: 
