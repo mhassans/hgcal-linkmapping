@@ -16,9 +16,12 @@ study_mapping:
   # algorithm: genetic_alg      
   #initial_state: bestsofar
   initial_state: random
-  #initial_state: bestsofar_38.npy       
+  #initial_state: bestsofar_38.npy   
   random_seed: ~
   max_iterations: 100000 
+  #minigroup_type: 'bylayer_silicon_seprated'
+  #minigroup_type: 'bylayer'
+  minigroup_type: 'minimal'
   
 check_for_missing_modules:
   inCMSSW: True

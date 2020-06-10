@@ -302,42 +302,68 @@ def getlpGBTHists(data, module_hists):
     
     return lpgbt_hists
 
-def getMinilpGBTGroups(data):
+def getMinilpGBTGroups(data, minigroup_type):
 
     minigroups = {}
     counter = 0
     minigroups_swap = {}
+    n_lpgbt = 1 + np.max([np.max(data["TPGId1"]), np.max(data["TPGId2"])])
     
-    for index, row in data.iterrows():
+    if(minigroup_type=='minimal'):
+        for index, row in data.iterrows():
+            if (row['nTPG']==0): continue
+            elif (row['nTPG']==1): 
+                #If there is only one lpgbt attached to the module
+                #Check if it is attached to another module
+                #If it is not create a new minigroup
+                #which is labelled with 'counter'
+                if not (row['TPGId1'] in minigroups):
 
-        if (row['nTPG']==0): continue
+                    minigroups[row['TPGId1']] = counter
+                    counter+=1
 
-        elif (row['nTPG']==1): 
-            #If there is only one lpgbt attached to the module
-            #Check if it is attached to another module
-            #If it is not create a new minigroup
-            #which is labelled with 'counter'
-            if not (row['TPGId1'] in minigroups):
+                
+            elif (row['nTPG']==2): 
+                
+                #If there are two lpgbts attached to the module
+                #The second one is "new"
 
-                minigroups[row['TPGId1']] = counter
-                counter+=1
+                if (row['TPGId2'] in minigroups):
+                    print ("should not be the case?")
 
+                if (row['TPGId1'] in minigroups):
+                    minigroups[row['TPGId2']] = minigroups[row['TPGId1']]
+                else:
+                    minigroups[row['TPGId1']] = counter
+                    minigroups[row['TPGId2']] = counter
+
+                    counter+=1
+
+    elif (minigroup_type=='bylayer_silicon_seprated'):
+        layer = 1 
+        for lpgbt in range(n_lpgbt):
+            layers_connected_to_lpgbt = list(data["layer"][(data["TPGId1"]==lpgbt) | (data["TPGId2"]==lpgbt)])
+            if(len(dict.fromkeys(layers_connected_to_lpgbt))!=1):
+                print("LpGBT connected to more than one layer. Change algorithm!!")
             
-        elif (row['nTPG']==2): 
-            
-            #If there are two lpgbts attached to the module
-            #The second one is "new"
-
-            if (row['TPGId2'] in minigroups):
-                print ("should not be the case?")
-
-            if (row['TPGId1'] in minigroups):
-                minigroups[row['TPGId2']] = minigroups[row['TPGId1']]
-            else:
-                minigroups[row['TPGId1']] = counter
-                minigroups[row['TPGId2']] = counter
-
+            if (layer !=layers_connected_to_lpgbt[0]):
                 counter+=1
+            minigroups[lpgbt] = counter
+            layer = layers_connected_to_lpgbt[0]
+
+    elif (minigroup_type=='bylayer'):
+        layer = 1
+        for lpgbt in range(n_lpgbt):
+            layers_connected_to_lpgbt = list(data["layer"][(data["TPGId1"]==lpgbt) | (data["TPGId2"]==lpgbt)])
+            if(len(dict.fromkeys(layers_connected_to_lpgbt))!=1):
+                print("LpGBT connected to more than one layer. Change algorithm!!")
+
+            if (layer !=layers_connected_to_lpgbt[0]):
+                counter+=1
+            if(layer ==50 and layers_connected_to_lpgbt[0]==37):
+                counter=22
+            minigroups[lpgbt] = counter
+            layer = layers_connected_to_lpgbt[0]    
 
     for lpgbt, minigroup in minigroups.items(): 
         if minigroup in minigroups_swap: 
