@@ -18,7 +18,7 @@ study_mapping:
   initial_state: random
   #initial_state: bundles_job_default.npy   
   random_seed: ~
-  max_iterations: 100000 
+  max_iterations: 100000
   #minigroup_type: 'bylayer_silicon_seprated'
   #minigroup_type: 'bylayer'
   minigroup_type: 'minimal'

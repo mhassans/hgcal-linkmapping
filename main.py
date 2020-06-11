@@ -6,6 +6,7 @@ import numpy as np
 import mlrose_mod as mlrose
 import time
 import yaml
+import code
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -89,10 +90,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
     minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+
 #    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
-
     
     def mapping_max(state):
         global chi2_min

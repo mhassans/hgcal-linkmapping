@@ -350,7 +350,6 @@ def getMinilpGBTGroups(data, minigroup_type):
                 counter+=1
             minigroups[lpgbt] = counter
             layer = layers_connected_to_lpgbt[0]
-            #print(layers_connected_to_lpgbt[0] , counter)
 
     elif (minigroup_type=='bylayer'):
         layer = 1
@@ -365,7 +364,6 @@ def getMinilpGBTGroups(data, minigroup_type):
                 counter=22
             minigroups[lpgbt] = counter
             layer = layers_connected_to_lpgbt[0]
-            #print(layers_connected_to_lpgbt[0] , counter)
     
 
     for lpgbt, minigroup in minigroups.items(): 
@@ -373,7 +371,7 @@ def getMinilpGBTGroups(data, minigroup_type):
             minigroups_swap[minigroup].append(lpgbt) 
         else: 
             minigroups_swap[minigroup]=[lpgbt] 
-
+    
     return minigroups,minigroups_swap
 
 def find_nearest(array, values):
