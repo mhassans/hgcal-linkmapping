@@ -84,16 +84,17 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
-    inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
-    
-    #Form hists corresponding to each lpGBT from module hists
-    lpgbt_hists = getlpGBTHists(data, module_hists)
-    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
-#    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
-    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
-    minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
+   # inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
+   # 
+   # #Form hists corresponding to each lpGBT from module hists
+   # lpgbt_hists = getlpGBTHists(data, module_hists)
+   # minigroups, minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+   # minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+   # minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
 
-    
+    inclusive_hists, module_hists2D = getModuleHists2D(CMSSW_ModuleHists)
+    lpgbt_hists2D = getlpGBTHists(data, module_hists2D)
+
     def mapping_max(state):
         global chi2_min
         global combbest
