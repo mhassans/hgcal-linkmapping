@@ -6,6 +6,7 @@ import numpy as np
 import mlrose_mod as mlrose
 import time
 import yaml
+import signal
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -19,6 +20,9 @@ from bestchi2 import bestsofar
 
 chi2_min = 50000000000000000000000
 combbest = []
+
+def handler(signum, frame):
+    raise Exception()    
 
 def plot_lpGBTLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
@@ -178,11 +182,11 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
             print (repr(best_state))
 
-        except KeyboardInterrupt:
+        except:
             print("interrupt received, stopping and saving")
             
-        finally:
 
+        finally:
             bundles = getBundles(minigroups_swap,combbest)
             np.save(output_dir + "/" + filename + ".npy",bundles)
             file1 = open(output_dir + "/chi2.txt","a")
@@ -214,7 +218,11 @@ def main():
     except EnvironmentError:
         print ("Please give valid config file")
         exit()
-    
+
+    #Catch possible exceptions from batch system
+    signal.signal(signal.SIGINT,handler)
+    signal.signal(signal.SIGUSR1,handler)
+    signal.signal(signal.SIGXCPU,handler)
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
