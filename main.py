@@ -88,11 +88,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
+
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
-#    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
-
     
     def mapping_max(state):
         global chi2_min
@@ -152,7 +151,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
-        np.save(output_dir + "/" + filename + ".npy",bundles)
+        np.save(output_dir + "/" + filename + "_saveroot.npy",bundles)
         for sector in bundled_hists:
             for key, value in sector.items():
                 value.Write()
@@ -185,7 +184,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
             bundles = getBundles(minigroups_swap,combbest)
             np.save(output_dir + "/" + filename + ".npy",bundles)
-            file1 = open(output_dir + "/chi2.txt","a")
+            file1 = open(output_dir + "/chi2_"+filenumber+".txt","a")
             file1.write( "bundles[" + filenumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
 

@@ -9,7 +9,7 @@ from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
 from rotate import rotate_to_sector_0
 import time
 import yaml
-import sys
+import sys, os
 
 def getMiniModuleGroups(data,minigroups_swap):
 
@@ -265,11 +265,12 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile):
 
 
 
-def plotMeanMax(eventData):
+def plotMeanMax(eventData, outdir = "."):
     #Load pickled per-event bundle histograms
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
-
+    os.system("mkdir -p " + outdir)
+    
     nbins = 42
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = nbins, range = (0.076,0.58) )
@@ -295,34 +296,35 @@ def plotMeanMax(eventData):
         for s,std in enumerate(hist_std):
             hist_std[s] = std + hist_mean[s]
 
-        pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012)
-        pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012)
-        pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012)
+        pl.bar((inclusive_hists[1])[:-1], hist_max, width=0.012,align='edge')
+        pl.bar((inclusive_hists[1])[:-1], hist_std, width=0.012,align='edge')
+        pl.bar((inclusive_hists[1])[:-1], hist_mean, width=0.012,align='edge')
 
         #Plot all events for a given bundle on the same plot
         # for e,event in enumerate(list_over_events):
         #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
         #     #if (e>200): break
-
-        pl.savefig( "plots/bundle_" + str(bundle) + "max.png" )
+        
+        pl.savefig( outdir + "/bundle_" + str(bundle) + "max.png" )
         pl.clf()
 
         hists_max.append(hist_max)
         
     #Plot maxima for all bundles on the same plot
     for hist in hists_max:
-        pl.bar((inclusive_hists[1])[:-1], hist, width=0.012)
+        pl.bar((inclusive_hists[1])[:-1], hist, width=0.012,align='edge')
     pl.xlabel('r/z')
     pl.ylabel('Maximum number of TCs per bin')
-    pl.savefig( "plots/maxima.png" )
+    pl.savefig( outdir + "/maxima.png" )
     pl.clf()
 
 
-def plotTruncation(eventData):
+def plotTruncation(eventData, outdir = "."):
     #Load pickled per-event bundle histograms
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
-
+    os.system("mkdir -p " + outdir)
+    
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
 
@@ -398,7 +400,7 @@ def plotTruncation(eventData):
     pl.xlabel('Number of TCs truncated on average per bundle')
     pl.ylabel('Number of Events')
     pl.legend()
-    pl.savefig( "plots/truncation.png" )
+    pl.savefig( outdir + "/truncation.png" )
     
 def main():
 
@@ -425,11 +427,11 @@ def main():
 
     if (config['function']['plot_MeanMax']):
         subconfig = config['plot_MeanMax']
-        plotMeanMax(eventData = subconfig['eventData'])
+        plotMeanMax(eventData = subconfig['eventData'], outdir = config['output_dir'])
 
     if (config['function']['plot_Truncation']):
         subconfig = config['plot_Truncation']
-        plotTruncation(eventData = subconfig['eventData'])
+        plotTruncation(eventData = subconfig['eventData'],outdir = config['output_dir'] )
         
     
 main()
