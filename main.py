@@ -14,6 +14,7 @@ from sklearn.metrics import accuracy_score
 
 from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
+from process2D import getModuleHists2D, getlpGBTHists2D, getMiniGroupHists2D, getMiniGroupHists2D, getBundledlpgbtHists2D
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
 
@@ -93,7 +94,11 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
    # minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
 
     inclusive_hists, module_hists2D = getModuleHists2D(CMSSW_ModuleHists)
-    lpgbt_hists2D = getlpGBTHists(data, module_hists2D)
+    lpgbt_hists2D = getlpGBTHists2D(data, module_hists2D)
+    minigroups, minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+    minigroup_hists2D = getMiniGroupHists2D(lpgbt_hists2D, minigroups_swap)
+    minigroup_hists_root2D = getMiniGroupHists2D(lpgbt_hists2D,minigroups_swap,root=True)
+
 
     def mapping_max(state):
         global chi2_min
@@ -102,8 +107,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         chi2 = 0
     
         bundles = getBundles(minigroups_swap,state)
-        #bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-        bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
+        bundled_lpgbthists = getBundledlpgbtHists2D(minigroup_hists2D,bundles)
 
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
@@ -150,7 +154,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         #Save best combination so far into a root file
         bundles = getBundles(minigroups_swap,init_state)
 
-        bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        bundled_hists = getBundledlpgbtHistsRoot2D(minigroup_hists_root2D,bundles)
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
         np.save(output_dir + "/" + filename + ".npy",bundles)
