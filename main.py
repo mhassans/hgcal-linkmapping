@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score
 
 from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
-from process2D import getModuleHists2D, getlpGBTHists2D, getMiniGroupHists2D, getMiniGroupHists2D, getBundledlpgbtHists2D
+from process2D import getModuleHists2D, getlpGBTHists2D, getMiniGroupHists2D, getMiniGroupHists2D, getBundledlpgbtHists2D, getBundledlpgbtHistsRoot2D
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
 

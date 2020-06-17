@@ -121,7 +121,7 @@ def getModuleHists(HistFile):
     
     PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
     inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Inclusive_1D") )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Phi60" , 1, 6) )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Phi60_1D" , 1, 6) )
                 
     module_hists.append(inclusive)
     module_hists.append(phi60)
