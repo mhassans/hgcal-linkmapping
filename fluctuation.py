@@ -153,7 +153,7 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations(initial_state, cmsswNtuple, mappingFile):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata"):
 
     #List of which minigroups are assigned to each bundle 
     init_state = np.hstack(np.load(initial_state,allow_pickle=True))
@@ -260,7 +260,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile):
     finally:
 
         #Write all data to file for later analysis (Pickling)
-        with open("alldata.txt", "wb") as filep:
+        with open( outputName + ".txt", "wb") as filep:
             pickle.dump(bundled_lpgbthists_allevents, filep)
 
 
@@ -421,7 +421,7 @@ def main():
 
     if (config['function']['checkFluctuations']):
         subconfig = config['checkFluctuations']
-        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'])
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'])
 
     #Plotting functions
 
