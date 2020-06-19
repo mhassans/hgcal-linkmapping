@@ -30,8 +30,8 @@ inclusive = filein.Get("ROverZ_Inclusive_1D")
 phi60 = filein.Get("ROverZ_Phi60_1D")
 
 for i in range (24):
-    inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
-    phi60_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
+    inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0").ProjectionX() )
+    phi60_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1").ProjectionX() )
 
     inclusive_hists_ratio.append (  inclusive_hists[-1].Clone ("inclusive_ratio_" + str(i)  )  )
     phi60_hists_ratio.append (  phi60_hists[-1].Clone ("phi60_ratio_" + str(i)  )  )

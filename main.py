@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score
 
 from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
-from process2D import getModuleHists2D, getlpGBTHists2D, getMiniGroupHists2D, getMiniGroupHists2D, getBundledlpgbtHists2D, getBundledlpgbtHistsRoot2D
+from process2D import getModuleHists2D, getlpGBTHists2D, getMiniGroupHists2D, getMiniGroupHists2D, getBundledlpgbtHists2D, getBundledlpgbtHistsRoot2D, calculateChiSquared_modif
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
 
@@ -85,7 +85,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal"):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal", chi2_coef=0.1):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -113,7 +113,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundles = getBundles(minigroups_swap,state)
         bundled_lpgbthists = getBundledlpgbtHists2D(minigroup_hists2D,bundles)
 
-        chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
+        chi2 = calculateChiSquared_modif(inclusive_hists,bundled_lpgbthists)
 
         typicalchi2 = 600000000000
         if (chi2<chi2_min):
@@ -159,7 +159,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundles = getBundles(minigroups_swap,init_state)
 
         bundled_hists = getBundledlpgbtHistsRoot2D(minigroup_hists_root2D,bundles)
-        chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
+        chi2 = calculateChiSquared_modif(inclusive_hists,bundled_hists,root=True)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
         np.save(output_dir + "/" + filename + ".npy",bundles)
         for sector in bundled_hists:
@@ -231,7 +231,7 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],minigroup_type=subconfig['minigroup_type'])
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],minigroup_type=subconfig['minigroup_type'],chi2_coef=subconfig['coef_chi2'])
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']

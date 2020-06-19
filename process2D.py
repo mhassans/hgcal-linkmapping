@@ -143,7 +143,10 @@ def getlpGBTHists2D(data, module_hists):
 
 def getBundledlpgbtHistsRoot2D(minigroup_hists,bundles):
 
-    bundled_lpgbthists = []
+
+    n_binPhi = minigroup_hists[0][0].GetNbinsY() #get number of bins in phi from one of the hists. 
+    phi_120deg = minigroup_hists[0][0].ProjectionY().GetBinLowEdge(n_binPhi+1) #should be 2.0943951023931953 radian, i.e. 120deg
+
     bundled_lpgbthists_list = []
 
     for p,phiselection in enumerate(minigroup_hists):
@@ -153,10 +156,10 @@ def getBundledlpgbtHistsRoot2D(minigroup_hists,bundles):
         for i in range(len(bundles)):#loop over bundles
 
             #Create one lpgbt histogram per bundle
-            lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58);
+            lpgbt_hist = ROOT.TH2D( ("lpgbt_ROverZ_bundled_" + str(i) + "_" + str(p)),"",42,0.076,0.58,n_binPhi,0.0,phi_120deg);
             
             for minigroup in bundles[i]:#loop over each lpgbt in the bundle
-                lpgbt_hist.Add( phiselection[minigroup].ProjectionX())
+                lpgbt_hist.Add( phiselection[minigroup])
 
             temp[i] = lpgbt_hist
 
@@ -167,8 +170,8 @@ def getBundledlpgbtHistsRoot2D(minigroup_hists,bundles):
     
 def getBundledlpgbtHists2D(minigroup_hists,bundles):
 
-    #bundled_lpgbthists = [] #not used in the code?
     bundled_lpgbthists_list = []
+    hist2D_shape = minigroup_hists[0][0].shape # get shape of 2D hists from one of them
 
     for p,phiselection in enumerate(minigroup_hists):
 
@@ -177,14 +180,30 @@ def getBundledlpgbtHists2D(minigroup_hists,bundles):
         for i in range(len(bundles)):#loop over bundles
 
             #Create one lpgbt histogram per bundle
-            lpgbt_hist_list = np.zeros(42) 
+            lpgbt_hist_list = np.zeros(hist2D_shape)
             
             for minigroup in bundles[i]:#loop over each lpgbt in the bundle
-                lpgbt_hist_list+= phiselection[minigroup].sum(axis=1) 
+                lpgbt_hist_list+= phiselection[minigroup]#.sum(axis=1) 
 
             temp_list[i] = lpgbt_hist_list
 
         bundled_lpgbthists_list.append(temp_list)
 
     return bundled_lpgbthists_list
+
+def calculateChiSquared_modif(inclusive,grouped,root=False):
+
+    chi2_total = 0
+    for i in range(2):
+        for key,hist in grouped[i].items():
+            if(root):
+                 for b in range(1,43):
+                     squared_diff = np.power(hist.ProjectionX().GetBinContent(b) - inclusive[i].GetBinContent(b)/24, 2 )   
+                     chi2_total+=squared_diff
+            else:
+                 for b in range(42):
+                     squared_diff = np.power(hist[b].sum()-inclusive[i].GetBinContent(b+1)/24, 2 ) #sum() used to project 2D to 1D R/Z   
+                     chi2_total+=squared_diff
+                
+    return chi2_total
 
