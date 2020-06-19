@@ -22,7 +22,7 @@ chi2_min = 50000000000000000000000
 combbest = []
 
 def handler(signum, frame):
-    raise Exception()    
+    raise ValueError()    
 
 def plot_lpGBTLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
@@ -182,14 +182,14 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
             print (repr(best_state))
 
-        except:
+        except ValueError:
             print("interrupt received, stopping and saving")
             
 
         finally:
             bundles = getBundles(minigroups_swap,combbest)
             np.save(output_dir + "/" + filename + ".npy",bundles)
-            file1 = open(output_dir + "/chi2.txt","a")
+            file1 = open(output_dir + "/chi2_"+filenumber+".txt","a")
             file1.write( "bundles[" + filenumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
 
