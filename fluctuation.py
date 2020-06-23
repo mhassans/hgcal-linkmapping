@@ -38,46 +38,6 @@ def getMiniModuleGroups(data,minigroups_swap):
     return minigroups_modules
     
 
-# def getlpGBTHistsNumpy(data, module_hists):
-
-#     lpgbt_hists = []
-
-#     for p,phiselection in enumerate(module_hists):#inclusive and phi < 60
-
-#         temp = {}
-
-#         for lpgbt in range(0,1600) :
-#             lpgbt_found = False
-
-#             #lpgbt_hist = ROOT.TH1D( ("lpgbt_ROverZ_silicon_" + str(lpgbt) + "_" + str(p)),"",42,0.076,0.58);
-#             lpgbt_hist = np.zeros(42)
-            
-#             for tpg_index in ['TPGId1','TPGId2']:#lpgbt may be in the first or second position in the file
-
-#                 for index, row in (data[data[tpg_index]==lpgbt]).iterrows():  
-#                     lpgbt_found = True
-                    
-#                     if (row['density']==2):#Scintillator
-
-#                         hist = phiselection[ 1, row['u'], row['v'], row['layer'] ] # get module hist
-#                     else:
-#                         hist = phiselection[ 0, row['u'], row['v'], row['layer'] ] # get module hist        
-
-#                     linkfrac = 'TPGeLinkFrac1'
-#                     if ( tpg_index == 'TPGId2' ):
-#                         linkfrac = 'TPGeLinkFrac2'
-
-#                     #lpgbt_hist.Add( hist, row[linkfrac] ) # add module hist with the correct e-link weight
-#                     weighted = hist*row[linkfrac]
-#                     lpgbt_hist = lpgbt_hist + weighted
-                    
-#             if lpgbt_found:
-#                 temp[lpgbt] = lpgbt_hist
-
-#         lpgbt_hists.append(temp)
-    
-#     return lpgbt_hists
-
 def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
     
     minigroup_hists = []
@@ -103,6 +63,9 @@ def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
     return minigroup_hists
 
 def getROverZPhi(x, y, z):
+
+    if (z < 0):
+        x = x*-1
     
     r = math.sqrt( x*x + y*y  );
     phi = np.arctan2(y,x);
@@ -117,7 +80,6 @@ def getROverZPhi(x, y, z):
 
     roverz_phi = [r/z,phi]
     return roverz_phi;
-
 
 def etaphiMapping(layer, etaphi):
 
@@ -214,7 +176,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(eta_phi[0]))            
                     if (eta_phi[1] < np.pi/3):
                         ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(eta_phi[0]))
-
+                        
                 else: #Scintillator  
                     eta = cellu
                     phi = cellv
@@ -319,11 +281,14 @@ def plotMeanMax(eventData, outdir = "."):
     pl.clf()
 
 
-def plotTruncation(eventData, outdir = "."):
+def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #Load pickled per-event bundle histograms
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
     os.system("mkdir -p " + outdir)
+
+    nbins = 42
+    nbundles = 24
     
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
@@ -332,22 +297,34 @@ def plotTruncation(eventData, outdir = "."):
     inclusive = 0
     phi60 = 1
     
-    #Loop over all events to get the maximum per bundle
+    #Loop over all events to get the maximum per bin over bundles (per event)
     
-    hists_max = []
-    for event in bundled_lpgbthists_allevents:
-        bundle_hists = np.array(list(event[inclusive].values()))
-        hists_max.append(np.amax(bundle_hists,axis=0))
+    inclusive_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    phi60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    
+    for e,event in enumerate(bundled_lpgbthists_allevents):
+        inclusive_bundled_lpgbthists_allevents[e] = np.array(list(event[inclusive].values()))
+        phi60_bundled_lpgbthists_allevents[e] = np.array(list(event[phi60].values()))
+
+    #Form the intersection of the inclusive and phi60 arrays,
+    #taking for each bin the maximum of the inclusive and phi60 x 2
+
+    maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phi60_bundled_lpgbthists_allevents*2)
+
+    if ( includePhi60 ):
+        hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
+    else:
+        hists_max = np.amax(inclusive_bundled_lpgbthists_allevents,axis=1)
 
     #Find the maximum per bin over all events,
     #Then find the 99th percentile for a 1% truncation
 
     overall_max = np.amax(hists_max, axis=0)    
-
+    
     overall_max99p = np.round(np.percentile(hists_max,99,axis=0))
     overall_max95p = np.round(np.percentile(hists_max,95,axis=0))
     overall_max90p = np.round(np.percentile(hists_max,90,axis=0))
-    
+
     #Loop back over events, counting the maximum wait time
     #for each bin, with and without truncation
     total_per_event = []
@@ -362,13 +339,21 @@ def plotTruncation(eventData, outdir = "."):
     
     for event in bundled_lpgbthists_allevents:
 
-        bundle_hists = np.array(list(event[inclusive].values()))
+        bundle_hists_inclusive = np.array(list(event[inclusive].values()))
+        bundle_hists_phi60 = np.array(list(event[phi60].values()))
+
+        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phi60*2)
         #24 arrays, with length of 42
         
         sum99 = []
         sum95 = []
         sum90 = []
-        
+
+        if ( includePhi60 ):
+            bundle_hists = bundle_hists_maximum
+        else:
+            bundle_hists = bundle_hists_inclusive
+
         for bundle in bundle_hists:
             
             #If a given r/z bin is greater than the maximum allowed by truncation then set to the truncated value
@@ -376,6 +361,7 @@ def plotTruncation(eventData, outdir = "."):
             sum95.append ( np.where( np.less( overall_max95p, bundle ), overall_max95p, bundle )  )
             sum90.append ( np.where( np.less( overall_max90p, bundle ), overall_max90p, bundle )  )
         
+
         total_per_event.append( np.sum(bundle_hists, axis=1 ))        #array with length of 24 (sum over the 42 bins)
         total_per_event99.append( np.sum(sum99, axis=1 ))
         total_per_event95.append( np.sum(sum95, axis=1 ))
@@ -386,21 +372,39 @@ def plotTruncation(eventData, outdir = "."):
         max_per_event_perbin95.append( np.amax(sum95, axis=0 ) )
         max_per_event_perbin90.append( np.amax(sum90, axis=0 ) )
 
-        
+    #Calculating the best possible given the per-event fluctuations
+
+    #For a given r/z bin calculate the mean over all events
+    #and add 2.5x the average of the 24 bundles' RMS
+    best_likely = np.mean(inclusive_bundled_lpgbthists_allevents,axis=(0,1))+2.5*np.mean(np.std(inclusive_bundled_lpgbthists_allevents,axis=(0)),axis=0)
+    ratio_to_best = np.divide(overall_max99p,best_likely,out=np.zeros_like(overall_max99p),where=best_likely!=0)
+    
     print ("Maximum TC in any bundle in any event (per bin) = ", np.round(np.amax(max_per_event_perbin,axis=0)/6))
     print ("Sum of per-bin maximum TC (over bundles and events) = ",  np.round(np.sum(np.amax(max_per_event_perbin,axis=0)/6)))
     print ("Sum of per-bin maximum TC (over bundles and events) with 1% truncation =", np.round(np.sum(np.amax(max_per_event_perbin99,axis=0)/6)))
     print ("Sum of per-bin maximum TC (over bundles and events) with 5% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin95,axis=0)/6)))
     print ("Sum of per-bin maximum TC (over bundles and events) with 10% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin90,axis=0)/6)))
-    
-    
+        
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='1% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='5% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event90),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='10% truncation')    
     pl.xlabel('Number of TCs truncated on average per bundle')
+    # pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6),50,(0,100),histtype='step',log=True,label='1% truncation')
+    # pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6),50,(0,100),histtype='step',log=True,label='5% truncation')
+    # pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event90),axis=1)/(6),50,(0,100),histtype='step',log=True,label='10% truncation')    
+    # pl.xlabel('Number of TCs truncated')
+    
     pl.ylabel('Number of Events')
     pl.legend()
     pl.savefig( outdir + "/truncation.png" )
+
+    pl.clf()
+    pl.step((inclusive_hists[1])[:-1], ratio_to_best)
+    pl.axhline(y=1, color='r', linestyle='--')
+    pl.xlabel('r/z')
+    pl.ylabel('Ratio of 1% truncation to likely best')
+    pl.ylim((0,10))
+    pl.savefig( outdir + "/ratio_to_best.png" )
     
 def main():
 
@@ -431,7 +435,7 @@ def main():
 
     if (config['function']['plot_Truncation']):
         subconfig = config['plot_Truncation']
-        plotTruncation(eventData = subconfig['eventData'],outdir = config['output_dir'] )
+        plotTruncation(eventData = subconfig['eventData'],outdir = config['output_dir'], includePhi60 = subconfig['includePhi60'] )
         
     
 main()
