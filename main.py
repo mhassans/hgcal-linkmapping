@@ -100,7 +100,6 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         chi2 = 0
     
         bundles = getBundles(minigroups_swap,state)
-        #bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)

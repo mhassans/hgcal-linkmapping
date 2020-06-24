@@ -63,6 +63,7 @@ def main():
     inclusive_hists = []
     phi60_hists = []
     inclusive_hists_ratio = []
+    inclusive_hists_ratio_to_phi60 = []
     phi60_hists_ratio = []
 
     #Load config file if exists,
@@ -110,16 +111,18 @@ def main():
         inclusive.Scale(1./24)
         phi60.Scale(1./24)
 
-        for i,hist in enumerate(bundled_hists[0].values()):
-            inclusive_hists.append(hist)
-            inclusive_hists_ratio.append(hist.Clone("inclusive_ratio_" + str(i) ))
+        for i,(hist_inc,hist_phi60) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
+            inclusive_hists.append(hist_inc)
+            inclusive_hists_ratio.append(hist_inc.Clone("inclusive_ratio_" + str(i) ))
             inclusive_hists_ratio[-1].Divide(inclusive)
 
-        for i,hist in enumerate(bundled_hists[1].values()):
-            phi60_hists.append(hist)
-            phi60_hists_ratio.append(hist.Clone("phi60_ratio_" + str(i) ))
+            phi60_hists.append(hist_phi60)
+            phi60_hists_ratio.append(hist_phi60.Clone("phi60_ratio_" + str(i) ))
             phi60_hists_ratio[-1].Divide(phi60)
 
+            inclusive_hists_ratio_to_phi60.append(hist_inc.Clone("inclusive_ratio_to_phi60_" + str(i) ))
+            inclusive_hists_ratio_to_phi60[-1].Divide(hist_phi60)
+            inclusive_hists_ratio_to_phi60[-1].SetLineColor(1+i)
 
         module_hists = None
         inclusive_hists_input = None
@@ -138,13 +141,16 @@ def main():
 
             inclusive_hists_ratio.append (  inclusive_hists[-1].Clone ("inclusive_ratio_" + str(i)  )  )
             phi60_hists_ratio.append (  phi60_hists[-1].Clone ("phi60_ratio_" + str(i)  )  )
+            inclusive_hists_ratio_to_phi60.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_phi60_" + str(i)  )  )
 
-            inclusive_hists_ratio[-1].Divide( inclusive  )
+            inclusive_hists_ratio[-1].Divide( inclusive  )            
             phi60_hists_ratio[-1].Divide( phi60  )
+            inclusive_hists_ratio_to_phi60[-1].Divide( phi60  )            
 
         
     print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio,"inclusive")
     print_ratio_plot(phi60,phi60_hists,phi60_hists_ratio,"phi60")
+    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phi60,"inclusive_to_phi60")
 
     
 
