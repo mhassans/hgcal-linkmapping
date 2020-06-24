@@ -19,7 +19,15 @@ study_mapping:
   #initial_state: bestsofar_38.npy       
   random_seed: ~
   max_iterations: 100000 
-  
+  #minigroup_type: 'bylayer_silicon_seprated'
+  #minigroup_type: 'bylayer'
+  minigroup_type: 'minimal'
+
+corrections:
+  ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'
+  ldmToHdmCorrectionType : 'FixedOcc'
+  nTCCorrectionFile: 'data/different_nTCs_linkMapping.txt'
+
 check_for_missing_modules:
   inCMSSW: True
   inMappingFile: True
