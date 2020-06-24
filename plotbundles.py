@@ -4,6 +4,7 @@ import sys
 import yaml
 import numpy as np
 from process import loadDataFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists
+from geometryCorrections import applyGeometryCorrections
 
 def print_ratio_plot(inclusive,individual,ratio,plotname):
     
@@ -99,7 +100,12 @@ def main():
 
         data = loadDataFile(MappingFile) #dataframe
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
+
         inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists)
+        if 'corrections' in config.keys():
+            if config['corrections'] != None:
+                applyGeometryCorrections( inclusive_hists_input, module_hists, config['corrections'] )
+
         lpgbt_hists = getlpGBTHists(data, module_hists)
         minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
         bundles = getBundles(minigroups_swap,init_state)

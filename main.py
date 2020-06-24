@@ -17,6 +17,8 @@ from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoad
 from plotting import plot, plot2D
 from bestchi2 import bestsofar
 
+from geometryCorrections import applyGeometryCorrections
+
 chi2_min = 50000000000000000000000
 combbest = []
 
@@ -80,12 +82,18 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0,correctionConfig=None):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
-    
+
+    # Apply various corrections to r/z distributions from CMSSW
+
+    if correctionConfig != None:
+        applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig )
+
+    print (inclusive_hists[0].GetEntries(),inclusive_hists[0].Integral())
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
 
@@ -217,7 +225,12 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'])
+        correctionConfig = None
+        if 'corrections' in config.keys():
+            correctionConfig = config['corrections']
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
+            correctionConfig = correctionConfig
+            )
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']
