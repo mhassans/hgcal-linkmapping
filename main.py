@@ -93,7 +93,6 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     if correctionConfig != None:
         applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig )
 
-    print (inclusive_hists[0].GetEntries(),inclusive_hists[0].Integral())
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
 
