@@ -172,7 +172,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 eta_phi = getROverZPhi(x,y,z)
 
                 if ( u > -990 ): #Silicon
-                    uv = rotate_to_sector_0(u,v,layer)
+                    uv,sector = rotate_to_sector_0(u,v,layer)
                     ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(eta_phi[0]))            
                     if (eta_phi[1] < np.pi/3):
                         ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(eta_phi[0]))
@@ -227,7 +227,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
 
 
-def plotMeanMax(eventData, outdir = "."):
+def plotMeanMax(eventData, outdir = ".", includePhi60 = True):
     #Load pickled per-event bundle histograms
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
@@ -247,10 +247,20 @@ def plotMeanMax(eventData, outdir = "."):
 
     for bundle in range(24):
 
-        list_over_events = np.empty(((len(bundled_lpgbthists_allevents)),nbins))
+        list_over_events_inclusive = np.empty(((len(bundled_lpgbthists_allevents)),nbins))
+        list_over_events_phi60 = np.empty(((len(bundled_lpgbthists_allevents)),nbins))
+        
         for e,event in enumerate(bundled_lpgbthists_allevents):
-            list_over_events[e] = np.array(event[inclusive][bundle])/6
-            
+            list_over_events_inclusive[e] = np.array(event[inclusive][bundle])/6
+            list_over_events_phi60[e] = np.array(event[phi60][bundle])/6
+
+        list_over_events_maximum = np.maximum(list_over_events_inclusive, list_over_events_phi60*2 )
+
+        if ( includePhi60 ):
+            list_over_events = list_over_events_inclusive
+        else:
+            list_over_events = list_over_events_maximum
+
         hist_max = np.amax(list_over_events,axis=0)
         hist_mean = np.mean(list_over_events, axis=0)
         hist_std = np.std(list_over_events, axis=0)
@@ -310,12 +320,12 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #taking for each bin the maximum of the inclusive and phi60 x 2
 
     maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phi60_bundled_lpgbthists_allevents*2)
-
+    
     if ( includePhi60 ):
         hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
     else:
         hists_max = np.amax(inclusive_bundled_lpgbthists_allevents,axis=1)
-
+            
     #Find the maximum per bin over all events,
     #Then find the 99th percentile for a 1% truncation
 
@@ -428,10 +438,10 @@ def main():
         checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'])
 
     #Plotting functions
-
+    
     if (config['function']['plot_MeanMax']):
         subconfig = config['plot_MeanMax']
-        plotMeanMax(eventData = subconfig['eventData'], outdir = config['output_dir'])
+        plotMeanMax(eventData = subconfig['eventData'], outdir = config['output_dir'], includePhi60 = subconfig['includePhi60'])
 
     if (config['function']['plot_Truncation']):
         subconfig = config['plot_Truncation']
