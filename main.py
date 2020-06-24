@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score
 from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
 from plotting import plot, plot2D
-from bestchi2 import bestsofar
+from example_minigroup_configuration import example_minigroup_configuration
 
 chi2_min = 50000000000000000000000
 combbest = []
@@ -117,8 +117,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
     
     init_state = []
-    if (initial_state == "best_so_far"):
-        init_state = bestsofar
+    if (initial_state == "example"):
+        init_state = example_minigroup_configuration
     if (initial_state[-4:] == ".npy"):
         print (initial_state)
         init_state = np.hstack(np.load(initial_state,allow_pickle=True))
