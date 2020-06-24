@@ -4,23 +4,18 @@ function:
   plot_Truncation: True
 
 print_level: 0
-#output_dir: plots/20200624/fluctuation_nugun
-output_dir: plots/20200624/fluctuation_ttbar
+output_dir: .
 
 checkFluctuations:
   initial_state: bundles_job_best_neutrinogun_200617.npy
-  #cmsswNtuple: data/small_v11_relval_neutrino_gun_200611.root
   cmsswNtuple: data/small_v11_relval_ttbar_200611.root
-  outputName: alldata_ttbar_2006022
-  #outputName: alldata_neutrino_gun_2006022
+  outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
 
 plot_MeanMax:
   eventData: data/alldata_neutrino_gun_2006022.txt
-  #eventData: data/alldata_ttbar_2006022.txt
   includePhi60: True
   
 plot_Truncation:
   eventData: data/alldata_neutrino_gun_2006022.txt
-  #eventData: data/alldata_ttbar_2006022.txt
   includePhi60: True

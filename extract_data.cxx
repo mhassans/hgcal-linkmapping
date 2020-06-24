@@ -192,7 +192,9 @@ int main(){
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
 
   bool createFlatFile = false;
-  int nPhiBins = 12;
+  int nPhiBins = 32;//5 degree bins
+  double phiMax = 7.*M_PI/9.;//140 degrees
+  double phiMin = -1.*M_PI/9.;//-20 degrees
   
   // Declaration of leaf types
   std::vector<int>     *tc_layer = 0;
@@ -251,7 +253,7 @@ int main(){
 
     //R/Z Histograms
 
-    TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
+    TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,nPhiBins,phiMin,phiMax);
     std::map<std::tuple<int,int,int,int>,TH2D*> ROverZ_per_module;
     //Create one for each module (silicon at first)
     for ( int i = 0; i < 15; i++){//u
@@ -259,7 +261,7 @@ int main(){
 	for ( int k = 1; k < 53; k++){//layer
 
 	  if ( k < 28 && k%2 == 0 ) continue;
-	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
+	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,phiMin,phiMax);
 	}
       }
     }
@@ -268,7 +270,7 @@ int main(){
       for ( int j = 0; j < 12; j++){
 	for ( int k = 37; k < 53; k++){
 
-	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH2D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
+	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH2D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,phiMin,phiMax);
 
 	}
       }
