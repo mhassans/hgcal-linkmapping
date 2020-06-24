@@ -93,8 +93,8 @@ def getModuleHists(HistFile):
     
     infiles.append(ROOT.TFile.Open(HistFile,"READ"))
 
-    inclusive = {}
-    phi60 = {}
+    phiGreater60 = {}
+    phiLess60 = {}
     
     for i in range (15): #u
         for j in range (15): #v
@@ -103,28 +103,29 @@ def getModuleHists(HistFile):
                     continue
                 
                 PhiVsROverZ = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
-                inclusive[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_Inclusive" )  
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
-                nBinsPhi = PhiVsROverZ.GetNbinsY();
-                phi60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_Phi60", 1, nBinsPhi//2)                
+                nBinsPhi = PhiVsROverZ.GetNbinsY()
+                phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )  
+                phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)                
 
 
     for i in range (5): #u
         for j in range (12): #v
             for k in range (37,53):#layer
                 PhiVsROverZ = infiles[-1].Get("ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
-                inclusive[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_Inclusive" )
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
-                nBinsPhi = PhiVsROverZ.GetNbinsY();
-                phi60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_Phi60", 1, nBinsPhi//2)
+                nBinsPhi = PhiVsROverZ.GetNbinsY()
+                phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )
+                phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)
 
     
     PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Inclusive_1D") )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_Phi60" , 1, 6) )
+    nBinsPhi = PhiVsROverZ.GetNbinsY()
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60_1D", nBinsPhi//2 + 1, nBinsPhi ) )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
                 
-    module_hists.append(inclusive)
-    module_hists.append(phi60)
+    module_hists.append(phiGreater60)
+    module_hists.append(phiLess60)
             
     return inclusive_hists,module_hists
 
@@ -138,8 +139,15 @@ def getHistsPerLayer(module_hists):
         histsPerLayer.append(layer_hist)
 
     print (len(histsPerLayer))
-    
+
+    #phi > 60
     for key,hist in module_hists[0].items():
+        #key[3] is the layer number (which goes from 1-52)
+        histsPerLayer[key[3]-1].Add( hist )
+
+    #phi < 60
+    for key,hist in module_hists[1].items():
+        #key[3] is the layer number (which goes from 1-52)
         histsPerLayer[key[3]-1].Add( hist )
 
     for hist in histsPerLayer:
@@ -236,32 +244,32 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
     
     minigroup_hists = []
 
-    minigroup_hists_inclusive = {}
-    minigroup_hists_phi60 = {}
+    minigroup_hists_phiGreater60 = {}
+    minigroup_hists_phiLess60 = {}
 
     for minigroup, lpgbts in minigroups_swap.items():
         
-        inclusive = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
-        phi60     = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
+        phiGreater60 = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_0","",42,0.076,0.58) 
+        phiLess60    = ROOT.TH1D( "minigroup_ROverZ_silicon_" + str(minigroup) + "_1","",42,0.076,0.58) 
 
         for lpgbt in lpgbts:
 
-            inclusive.Add( lpgbt_hists[0][lpgbt] )
-            phi60.Add( lpgbt_hists[1][lpgbt] )
+            phiGreater60.Add( lpgbt_hists[0][lpgbt] )
+            phiLess60.Add( lpgbt_hists[1][lpgbt] )
 
             
-        inclusive_array = hist2array(inclusive)
-        phi60_array = hist2array(phi60) 
+        phiGreater60_array = hist2array(phiGreater60)
+        phiLess60_array = hist2array(phiLess60) 
 
         if ( root ):
-            minigroup_hists_inclusive[minigroup] = inclusive
-            minigroup_hists_phi60[minigroup] = phi60
+            minigroup_hists_phiGreater60[minigroup] = phiGreater60
+            minigroup_hists_phiLess60[minigroup] = phiLess60
         else:
-            minigroup_hists_inclusive[minigroup] = inclusive_array
-            minigroup_hists_phi60[minigroup] = phi60_array
+            minigroup_hists_phiGreater60[minigroup] = phiGreater60_array
+            minigroup_hists_phiLess60[minigroup] = phiGreater60_array
             
-    minigroup_hists.append(minigroup_hists_inclusive)
-    minigroup_hists.append(minigroup_hists_phi60)
+    minigroup_hists.append(minigroup_hists_phiGreater60)
+    minigroup_hists.append(minigroup_hists_phiLess60)
 
     return minigroup_hists
 
@@ -269,7 +277,7 @@ def getlpGBTHists(data, module_hists):
 
     lpgbt_hists = []
 
-    for p,phiselection in enumerate(module_hists):#inclusive and phi < 60
+    for p,phiselection in enumerate(module_hists):#phi > 60 and phi < 60
 
         temp = {}
 
@@ -428,10 +436,11 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
     return bundled_lpgbthists_list
 
 
+
 def calculateChiSquared(inclusive,grouped):
 
     chi2_total = 0
-
+    
     for i in range(2):
 
         for key,hist in grouped[i].items():
@@ -443,8 +452,3 @@ def calculateChiSquared(inclusive,grouped):
                 chi2_total+=squared_diff
 
     return chi2_total
-
-
-
-    
-
