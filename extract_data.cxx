@@ -179,18 +179,14 @@ int main(){
   TH1::SetDefaultSumw2();
   TH1::AddDirectory(kFALSE);
 
-  // TString input_file = "../small_v11_ttbar_200406.root";
-  // TString flat_file_silicon = "words_all_v11_silicon.txt";
-  // TString flat_file_scintillator = "words_all_v11_scintillator.txt";
 
-  TString input_file = "data/small_v11_relval_neutrino_gun_200611.root";
-  TString flat_file_silicon = "words_all_v11_silicon_neutrino_gun.txt";
-  TString flat_file_scintillator = "words_all_v11_scintillator_neutrino_gun.txt";
-
-  //TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
-  //TFile * file = new TFile("data/PU200-QG.root","READ");
-  //  TFile * file = new TFile("../small_v11_ttbar_200406.root","READ");
-
+  TString input_file = "data/small_v11_relval_ttbar_200625.root";
+  TString flat_file_silicon = "words_all_v11_silicon_ttbar.txt";
+  TString flat_file_scintillator = "words_all_v11_scintillator_ttbar.txt";
+  TString file_ROverZHistograms = "ROverZHistograms_v11_relval_ttbar_20200625.root";
+  std::string average_tcs_sil = "average_tcs_sil_v11_relval_ttbar_20200625.csv";
+  std::string average_tcs_scin = "average_tcs_scin_v11_relval_ttbar_20200625.csv";
+  
 
   TFile * file = new TFile(input_file,"READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
@@ -456,7 +452,7 @@ int main(){
 
 
     //Save Eta Histograms	
-    TFile * file_out = new TFile("ROverZHistograms.root","RECREATE");
+    TFile * file_out = new TFile(file_ROverZHistograms,"RECREATE");
     file_out->cd();
     ROverZ_Inclusive->Write();
 
@@ -468,7 +464,7 @@ int main(){
 
     //Create output csv
     std::ofstream fout;
-    fout.open ("average_tcs_sil.csv");
+    fout.open (average_tcs_sil);
 
     for ( int i = 0; i < 15; i++){
       for ( int j = 0; j < 15; j++){
@@ -483,7 +479,7 @@ int main(){
 
     fout.close();
 
-    fout.open ("average_tcs_scin.csv");
+    fout.open (average_tcs_scin);
     for ( int i = 0; i < 5; i++){
       for ( int j = 0; j < 12; j++){
 	for ( int k = 37; k < 53; k++){
