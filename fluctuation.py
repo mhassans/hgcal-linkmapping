@@ -62,42 +62,44 @@ def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
 
     return minigroup_hists
 
-def getROverZPhi(x, y, z):
+def getROverZPhi(x, y, z, sector = 0):
 
     if (z < 0):
         x = x*-1
     
-    r = math.sqrt( x*x + y*y  );
-    phi = np.arctan2(y,x);
-
-    phi = phi + np.pi;
-    if ( phi < (2*np.pi/3) ):
-        phi = phi;
-    elif ( phi < (4*np.pi/3) ):
-        phi = phi-(2*np.pi/3);
-    else:
-        phi = phi-(4*np.pi/3);
+    r = math.sqrt( x*x + y*y  )
+    phi = np.arctan2(y,x)
+    
+    if (sector == 1):
+        if ( phi < np.pi && phi > 0):
+            phi = phi-(2*np.pi/3)
+        else:
+            phi = phi+(4*np.pi/3)
+    elif (sector == 2):
+        phi = phi+(2*np.pi/3)
 
     roverz_phi = [r/z,phi]
-    return roverz_phi;
+    return roverz_phi
 
 def etaphiMapping(layer, etaphi):
 
-    if (etaphi[1] <= 48):
+    if (etaphi[1] > 24 and etaphi[1] <= 72):
         sector = 0
-    elif (etaphi[1] > 48 and etaphi[1] <= 96):
-        sector = 1
-    else:
+    elif (etaphi[1] > 72 and etaphi[1] <= 120):
         sector = 2
-
-    if (sector==1):
-        pp=etaphi[1]-48
-    elif(sector==2):
-        pp=etaphi[1]-96
     else:
-        pp = etaphi[1]
+        sector = 1
+        
+    if (sector==0):
+        pp=etaphi[1]-24
+    elif (sector==2):
+        pp=etaphi[1]-72
+    elif (sector==1):
+        if (etaphi[1]<=24):
+            etaphi[1] = etaphi[1]+144
+        pp = etaphi[1]-120
   
-    pp = (pp-1)//4;# //Phi index 1-12
+    pp = (pp-1)//4# //Phi index 1-12
   
     if ( etaphi[0] <= 3 ):
         ep = 0
@@ -110,7 +112,7 @@ def etaphiMapping(layer, etaphi):
     else:
         ep = 4
 
-    return [ep,pp]
+    return [ep,pp],sector
 
 
 
@@ -169,10 +171,10 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             
             for u,v,layer,x,y,z,cellu,cellv in zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv):
 
-                eta_phi = getROverZPhi(x,y,z)
-
                 if ( u > -990 ): #Silicon
                     uv,sector = rotate_to_sector_0(u,v,layer)
+                    roverz_phi = getROverZPhi(x,y,z,sector)
+                    
                     ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(eta_phi[0]))            
                     if (eta_phi[1] < np.pi/3):
                         ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(eta_phi[0]))
@@ -180,7 +182,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 else: #Scintillator  
                     eta = cellu
                     phi = cellv
-                    etaphi = etaphiMapping(layer,[eta,phi]);
+                    etaphi,sector = etaphiMapping(layer,[eta,phi])
+                    roverz_phi = getROverZPhi(x,y,z,sector)
+                    
                     ROverZ_per_module[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module[1,etaphi[0],etaphi[1],layer],abs(eta_phi[0]))            
                     if (eta_phi[1] < np.pi/3):
                         ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer],abs(eta_phi[0]))
