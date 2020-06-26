@@ -14,6 +14,9 @@ def applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig ):
             inclusive_hist.Add( module_hist )
 
 def applyNTCCorrection( module_hists, correctionFile ):
+
+    print ( "Applying geometry corrections" )
+
     modulesToCorrect = loadSiliconNTCCorrectionFile( correctionFile )
 
     for index,row in modulesToCorrect.iterrows():
@@ -25,7 +28,7 @@ def applyNTCCorrection( module_hists, correctionFile ):
                 originalIntegral = hist.Integral()
                 hist.Scale( correction )
 
-                if ( originalIntegral != 0 and hist.Integral() <= 0 ) or hist.Integral() > originalIntegral * 3 or hist.Integral() < originalIntegral * 0.5 :
+                if ( originalIntegral != 0 and hist.Integral() <= 0 ) or hist.Integral() > originalIntegral * 3.6 or hist.Integral() < originalIntegral * 0.5 :
                     print ("WARNING - Weird integral of r/z distribution after applying correction")
                     print (hist.GetEntries(),hist.Integral(),correction)
 
