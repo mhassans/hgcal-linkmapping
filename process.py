@@ -266,7 +266,7 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
             minigroup_hists_phiLess60[minigroup] = phiLess60
         else:
             minigroup_hists_phiGreater60[minigroup] = phiGreater60_array
-            minigroup_hists_phiLess60[minigroup] = phiGreater60_array
+            minigroup_hists_phiLess60[minigroup] = phiLess60_array
             
     minigroup_hists.append(minigroup_hists_phiGreater60)
     minigroup_hists.append(minigroup_hists_phiLess60)

@@ -64,7 +64,7 @@ def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
 
 def getROverZPhi(x, y, z, sector = 0):
 
-    if (z < 0):
+    if (z > 0):
         x = x*-1
     
     r = math.sqrt( x*x + y*y  )
