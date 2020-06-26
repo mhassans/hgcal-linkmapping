@@ -87,7 +87,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
-
+    
     # Apply various corrections to r/z distributions from CMSSW
 
     if correctionConfig != None:
@@ -130,6 +130,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         print (initial_state)
         init_state = np.hstack(np.load(initial_state,allow_pickle=True))
     elif (initial_state == "random"):
+       np.random.seed(random_seed)
        init_state = np.arange(len(minigroups_swap))
        np.random.shuffle(init_state)
 

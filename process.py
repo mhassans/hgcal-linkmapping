@@ -121,7 +121,7 @@ def getModuleHists(HistFile):
     
     PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
     nBinsPhi = PhiVsROverZ.GetNbinsY()
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60_1D", nBinsPhi//2 + 1, nBinsPhi ) )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
     inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
                 
     module_hists.append(phiGreater60)
@@ -441,12 +441,12 @@ def calculateChiSquared(inclusive,grouped):
 
     chi2_total = 0
     
-    for i in range(2):
+    for i in range(len(inclusive)):
 
         for key,hist in grouped[i].items():
 
             for b in range(len(hist)):
-
+                
                 squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )   
 
                 chi2_total+=squared_diff

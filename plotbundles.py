@@ -113,20 +113,22 @@ def main():
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
 
         inclusive = inclusive_hists_input[0]
+        inclusive = inclusive + inclusive_hists_input[1]
         phi60 = inclusive_hists_input[1]
         inclusive.Scale(1./24)
         phi60.Scale(1./24)
 
         for i,(hist_inc,hist_phi60) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
             inclusive_hists.append(hist_inc)
-            inclusive_hists_ratio.append(hist_inc.Clone("inclusive_ratio_" + str(i) ))
+            inclusive_hists[-1] = inclusive_hists[-1] + hist_phi60
+            inclusive_hists_ratio.append(inclusive_hists[-1].Clone("inclusive_ratio_" + str(i) ))
             inclusive_hists_ratio[-1].Divide(inclusive)
 
             phi60_hists.append(hist_phi60)
             phi60_hists_ratio.append(hist_phi60.Clone("phi60_ratio_" + str(i) ))
             phi60_hists_ratio[-1].Divide(phi60)
 
-            inclusive_hists_ratio_to_phi60.append(hist_inc.Clone("inclusive_ratio_to_phi60_" + str(i) ))
+            inclusive_hists_ratio_to_phi60.append(inclusive_hists[-1].Clone("inclusive_ratio_to_phi60_" + str(i) ))
             inclusive_hists_ratio_to_phi60[-1].Divide(hist_phi60)
             inclusive_hists_ratio_to_phi60[-1].SetLineColor(1+i)
 
@@ -144,7 +146,8 @@ def main():
         for i in range (24):
             inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
             phi60_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
-
+            ROOT.TH1.Add(inclusive_hists[-1],phi60_hists[-1])
+            
             inclusive_hists_ratio.append (  inclusive_hists[-1].Clone ("inclusive_ratio_" + str(i)  )  )
             phi60_hists_ratio.append (  phi60_hists[-1].Clone ("phi60_ratio_" + str(i)  )  )
             inclusive_hists_ratio_to_phi60.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_phi60_" + str(i)  )  )

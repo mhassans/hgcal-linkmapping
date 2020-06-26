@@ -25,7 +25,7 @@ def applyNTCCorrection( module_hists, correctionFile ):
                 originalIntegral = hist.Integral()
                 hist.Scale( correction )
 
-                if ( originalIntegral != 0 and hist.Integral() <= 0 ) or hist.Integral() > originalIntegral * 2 or hist.Integral() < originalIntegral * 0.5 :
+                if ( originalIntegral != 0 and hist.Integral() <= 0 ) or hist.Integral() > originalIntegral * 3 or hist.Integral() < originalIntegral * 0.5 :
                     print ("WARNING - Weird integral of r/z distribution after applying correction")
                     print (hist.GetEntries(),hist.Integral(),correction)
 
