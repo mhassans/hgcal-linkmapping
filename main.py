@@ -6,6 +6,7 @@ import numpy as np
 import mlrose_mod as mlrose
 import time
 import yaml
+import signal
 
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
@@ -21,6 +22,9 @@ from geometryCorrections import applyGeometryCorrections
 
 chi2_min = 50000000000000000000000
 combbest = []
+
+def handler(signum, frame):
+    raise ValueError()    
 
 def plot_lpGBTLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
@@ -82,7 +86,8 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0,correctionConfig=None):
+
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -97,7 +102,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
 
-    minigroups,minigroups_swap = getMinilpGBTGroups(data)
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
     
@@ -185,11 +190,11 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
             print (repr(best_state))
 
-        except KeyboardInterrupt:
+        except ValueError:
             print("interrupt received, stopping and saving")
             
-        finally:
 
+        finally:
             bundles = getBundles(minigroups_swap,combbest)
             np.save(output_dir + "/" + filename + ".npy",bundles)
             file1 = open(output_dir + "/chi2_"+filenumber+".txt","a")
@@ -221,7 +226,11 @@ def main():
     except EnvironmentError:
         print ("Please give valid config file")
         exit()
-    
+
+    #Catch possible exceptions from batch system
+    signal.signal(signal.SIGINT,handler)
+    signal.signal(signal.SIGUSR1,handler)
+    signal.signal(signal.SIGXCPU,handler)
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
@@ -229,8 +238,9 @@ def main():
         if 'corrections' in config.keys():
             correctionConfig = config['corrections']
         study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
-            correctionConfig = correctionConfig
+            minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig
             )
+
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']
