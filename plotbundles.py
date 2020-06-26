@@ -105,6 +105,7 @@ def main():
         inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists)
         if 'corrections' in config.keys():
             if config['corrections'] != None:
+                print ( "Applying geometry corrections" )
                 applyGeometryCorrections( inclusive_hists_input, module_hists, config['corrections'] )
 
         lpgbt_hists = getlpGBTHists(data, module_hists)

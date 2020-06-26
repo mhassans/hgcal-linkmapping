@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import ROOT
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as pl
 import math
 import pickle
 from process import loadDataFile
 from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
 from rotate import rotate_to_sector_0
+from geometryCorrections import applyGeometryCorrectionsNumpy,loadSiliconNTCCorrectionFile
 import time
 import yaml
 import sys, os
@@ -71,7 +73,7 @@ def getROverZPhi(x, y, z, sector = 0):
     phi = np.arctan2(y,x)
     
     if (sector == 1):
-        if ( phi < np.pi && phi > 0):
+        if ( phi < np.pi and phi > 0):
             phi = phi-(2*np.pi/3)
         else:
             phi = phi+(4*np.pi/3)
@@ -117,7 +119,7 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata"):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", correctionConfig=None):
 
     #List of which minigroups are assigned to each bundle 
     init_state = np.hstack(np.load(initial_state,allow_pickle=True))
@@ -129,6 +131,12 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     #Load mapping file
     data = loadDataFile(mappingFile) 
 
+    #Load geometry corrections
+    if correctionConfig['nTCCorrectionFile'] != None:
+        modulesToCorrect = loadSiliconNTCCorrectionFile( correctionConfig['nTCCorrectionFile'] )
+    else:
+        modulesToCorrect = pd.DataFrame()
+        
     #Get list of which lpgbts are in each minigroup
     minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
@@ -175,9 +183,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     uv,sector = rotate_to_sector_0(u,v,layer)
                     roverz_phi = getROverZPhi(x,y,z,sector)
                     
-                    ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(eta_phi[0]))            
-                    if (eta_phi[1] < np.pi/3):
-                        ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(eta_phi[0]))
+                    ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
+                    if (roverz_phi[1] < np.pi/3):
+                        ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         
                 else: #Scintillator  
                     eta = cellu
@@ -185,9 +193,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     etaphi,sector = etaphiMapping(layer,[eta,phi])
                     roverz_phi = getROverZPhi(x,y,z,sector)
                     
-                    ROverZ_per_module[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module[1,etaphi[0],etaphi[1],layer],abs(eta_phi[0]))            
-                    if (eta_phi[1] < np.pi/3):
-                        ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer],abs(eta_phi[0]))
+                    ROverZ_per_module[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
+                    if (roverz_phi[1] < np.pi/3):
+                        ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
             ROverZ_Inclusive = np.empty(0)
@@ -201,15 +209,17 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             #Bin the TC module data
             module_hists_inc = {}
             module_hists_phi60 = {}
-            inclusive_hists = np.histogram( ROverZ_Inclusive, bins = 42, range = (0.076,0.58) )
-            inclusive_hists_phi60 = np.histogram( ROverZ_Inclusive_Phi60, bins = 42, range = (0.076,0.58) )
 
             for key,value in ROverZ_per_module.items():
                 module_hists_inc[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
             for key,value in ROverZ_per_module_Phi60.items():
                 module_hists_phi60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
 
+            #the module hists are a numpy array of size 42
             module_hists = [module_hists_inc,module_hists_phi60]
+
+            #Apply geometry corrections
+            applyGeometryCorrectionsNumpy( module_hists, modulesToCorrect )
 
             #Sum the individual module histograms to get the minigroup histograms
             minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
@@ -438,8 +448,12 @@ def main():
     #and to get the bundle R/Z histograms per event
 
     if (config['function']['checkFluctuations']):
+        correctionConfig = None
+        if 'corrections' in config.keys():
+            correctionConfig = config['corrections']
+
         subconfig = config['checkFluctuations']
-        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'])
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], correctionConfig = correctionConfig)
 
     #Plotting functions
     

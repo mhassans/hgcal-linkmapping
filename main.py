@@ -91,6 +91,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     # Apply various corrections to r/z distributions from CMSSW
 
     if correctionConfig != None:
+        print ( "Applying geometry corrections" )
         applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig )
 
     #Form hists corresponding to each lpGBT from module hists
