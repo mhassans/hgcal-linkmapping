@@ -1,0 +1,11 @@
+input_file: bundles_job_best_neutrinogun_200617.npy
+output_dir: plots/20200619
+
+npy_configuration:
+  mappingFile: data/FeMappingV7.txt
+  CMSSW_ModuleHists: data/ROverZHistograms_v11_relval_neutrino_gun_20200611.root
+
+corrections:
+  ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'
+  ldmToHdmCorrectionType : 'FixedOcc'
+  nTCCorrectionFile: 'data/different_nTCs_linkMapping.txt'

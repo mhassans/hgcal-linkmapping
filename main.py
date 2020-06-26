@@ -16,7 +16,9 @@ from sklearn.metrics import accuracy_score
 from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
 from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
 from plotting import plot, plot2D
-from bestchi2 import bestsofar
+from example_minigroup_configuration import example_minigroup_configuration
+
+from geometryCorrections import applyGeometryCorrections
 
 chi2_min = 50000000000000000000000
 combbest = []
@@ -84,19 +86,25 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,True)
     
     
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal"):
+
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
     
+    # Apply various corrections to r/z distributions from CMSSW
+
+    if correctionConfig != None:
+        print ( "Applying geometry corrections" )
+        applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig )
+
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
+
     minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
-#    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
-
     
     def mapping_max(state):
         global chi2_min
@@ -105,7 +113,6 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         chi2 = 0
     
         bundles = getBundles(minigroups_swap,state)
-        #bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
@@ -123,12 +130,13 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
     
     init_state = []
-    if (initial_state == "best_so_far"):
-        init_state = bestsofar
+    if (initial_state == "example"):
+        init_state = example_minigroup_configuration
     if (initial_state[-4:] == ".npy"):
         print (initial_state)
         init_state = np.hstack(np.load(initial_state,allow_pickle=True))
     elif (initial_state == "random"):
+       np.random.seed(random_seed)
        init_state = np.arange(len(minigroups_swap))
        np.random.shuffle(init_state)
 
@@ -156,7 +164,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
-        np.save(output_dir + "/" + filename + ".npy",bundles)
+        np.save(output_dir + "/" + filename + "_saveroot.npy",bundles)
         for sector in bundled_hists:
             for key, value in sector.items():
                 value.Write()
@@ -226,7 +234,13 @@ def main():
 
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
-        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],minigroup_type=subconfig['minigroup_type'])
+        correctionConfig = None
+        if 'corrections' in config.keys():
+            correctionConfig = config['corrections']
+        study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
+            minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig
+            )
+
 
     if ( config['function']['check_for_missing_modules'] ):
         subconfig = config['check_for_missing_modules']

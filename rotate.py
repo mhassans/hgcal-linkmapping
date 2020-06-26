@@ -51,6 +51,7 @@ def rotate(u,v,layer,sector):
             
 def rotate_to_sector_0(u,v,layer):
 
+    sector = 0
     uv = [u,v]
 
     if (layer > 28):
@@ -58,29 +59,35 @@ def rotate_to_sector_0(u,v,layer):
         if (layer % 2) == 0: #Even CEH Layers
 
             if ( u > 0 and v > 0 ): #sector 0
-                return uv
+                return uv,sector
             elif ( u <= 0 and v > u ): #sector 1
-                return rotate_cell_CEH_Even(rotate_cell_CEH_Even(uv)) 
+                sector = 1
+                return rotate_cell_CEH_Even(rotate_cell_CEH_Even(uv)),sector
             else: #sector 2
-                return rotate_cell_CEH_Even(uv)
+                sector = 2
+                return rotate_cell_CEH_Even(uv),sector
             
         else: #Odd CEH Layers
                 
             if ( u >= 0 and v >= 0 ): #sector 0
-                return uv
+                return uv,sector
             elif ( u < 0 and v >= u ): #sector 1
-                return rotate_cell_CEH_Odd(rotate_cell_CEH_Odd(uv)) 
+                sector = 1
+                return rotate_cell_CEH_Odd(rotate_cell_CEH_Odd(uv)),sector
             else: #sector 2
-                return rotate_cell_CEH_Odd(uv)
+                sector = 2
+                return rotate_cell_CEH_Odd(uv),sector
 
     else: #CEE
 
         if ( u > 0 and v >= 0 ): #sector 0
-            return uv
+            return uv,sector
         elif ( u <= 0 and v > u ): #sector 1
-            return rotate_cell_CEE(rotate_cell_CEE(uv)) 
+            sector = 1
+            return rotate_cell_CEE(rotate_cell_CEE(uv)),sector
         else: #sector 2
-            return rotate_cell_CEE(uv)
+            sector = 2
+            return rotate_cell_CEE(uv),sector
 
 #Main function for standalone use
 
