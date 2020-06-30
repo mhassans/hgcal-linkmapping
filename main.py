@@ -87,7 +87,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     
     
 
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None,include_errors_in_chi2=False):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -103,7 +103,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     lpgbt_hists = getlpGBTHists(data, module_hists)
 
     minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
-    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap,return_error_squares=include_errors_in_chi2)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
     
     def mapping_max(state):
@@ -118,6 +118,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
         typicalchi2 = 600000000000
+        if include_errors_in_chi2:
+            typicalchi2 = 60000000
         if (chi2<chi2_min):
             chi2_min = chi2
             combbest = np.copy(state)
@@ -156,16 +158,24 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     else:
         filenumber = "default"
     filename+=filenumber
-        
+
+
+
+
+
+
+    
     if ( algorithm == "save_root" ):
         #Save best combination so far into a root file
         bundles = getBundles(minigroups_swap,init_state)
 
-        bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        bundled_hists_root = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        bundled_hists = getBundledlpgbtHists(minigroup_hists,bundles)
+
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
         np.save(output_dir + "/" + filename + "_saveroot.npy",bundles)
-        for sector in bundled_hists:
+        for sector in bundled_hists_root:
             for key, value in sector.items():
                 value.Write()
         for sector in inclusive_hists:
@@ -183,16 +193,21 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
                 for lpgbt in lpgbts:
                     print (str(lpgbt) + ", "  , end = '')
 
-        
-    elif (algorithm == "random_hill_climb"):
-        try:
+    elif algorithm == "random_hill_climb" or algorithm == "genetic_alg" or algorithm == "mimic" or algorithm == "simulated_annealing":
 
-            best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
-            print (repr(best_state))
+        try:
+            if (algorithm == "random_hill_climb"):
+                best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
+            elif (algorithm == "genetic_alg"):
+                best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
+            elif (algorithm == "mimic"):
+                best_state, best_fitness = mlrose.mimic(problem_cust, pop_size=200,  keep_pct=0.2, max_attempts=10, max_iters=np.inf, curve=False, random_state=random_seed)
+            elif (algorithm == "simulated_annealing"):
+                best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state=random_seed)
+                
 
         except ValueError:
             print("interrupt received, stopping and saving")
-            
 
         finally:
             bundles = getBundles(minigroups_swap,combbest)
@@ -201,16 +216,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             file1.write( "bundles[" + filenumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
 
-            
-    elif (algorithm == "genetic_alg"):
-        best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
-    elif (algorithm == "mimic"):
-        best_state, best_fitness = mlrose.mimic(problem_cust, pop_size=200,  keep_pct=0.2, max_attempts=10, max_iters=np.inf, curve=False, random_state=random_seed)
-    elif (algorithm == "simulated_annealing"):
-        best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state = 1)
     else:
         print("Algorithm "+ algorithm + " not known" )
-
 
     
 def main():
@@ -232,13 +239,20 @@ def main():
     signal.signal(signal.SIGUSR1,handler)
     signal.signal(signal.SIGXCPU,handler)
 
+    ROOT.TH1.SetDefaultSumw2()
+    
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
         correctionConfig = None
+        include_errors_in_chi2 = False
         if 'corrections' in config.keys():
             correctionConfig = config['corrections']
+        if 'include_errors_in_chi2' in subconfig.keys():
+            include_errors_in_chi2 = subconfig['include_errors_in_chi2']
+        
+            
         study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
-            minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig
+                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,include_errors_in_chi2=include_errors_in_chi2
             )
 
 
