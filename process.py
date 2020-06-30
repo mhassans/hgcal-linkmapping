@@ -506,7 +506,7 @@ def calculateChiSquared(inclusive,grouped):
     use_error_squares=False
     #Check if the minigroup_hists were produced
     #with additional squared error information    
-    
+
     if ( grouped[0][0].ndim == 2 ):
         use_error_squares=True
 
