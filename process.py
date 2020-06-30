@@ -240,12 +240,44 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
-def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
+#Minimal custom implementation of root_numpy hist2array returning errors
+#See https://github.com/scikit-hep/root_numpy/blob/master/root_numpy/_hist.py
+# for original
+def TH1D2array(hist, include_overflow=False, return_error_squares=False):
+
+    # Determine dimensionality and shape
+    shape = (hist.GetNbinsX() + 2)
+    dtype = np.dtype('f8')
+    array = np.ndarray(shape=shape, dtype=dtype, buffer=hist.GetArray())
+    errors = np.ndarray(shape=shape, dtype=dtype)
+
+    for e in range (hist.GetNbinsX() + 1):
+        errors[e] = np.power(hist.GetBinError(e),2)
+    
+    if not include_overflow:
+        # Remove overflow and underflow bins
+        array = array[slice(1, -1)]
+        errors = errors[slice(1, -1)]
+
+    array = np.copy(array)
+    errors = np.copy(errors)
+
+    if return_error_squares:
+        array = np.column_stack((array,errors))
+
+    return array
+    
+
+def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False, return_error_squares=False):
     
     minigroup_hists = []
+    minigroup_hists_errors = []
 
     minigroup_hists_phiGreater60 = {}
     minigroup_hists_phiLess60 = {}
+
+    minigroup_hists_errors_phiGreater60 = {}
+    minigroup_hists_errors_phiLess60 = {}
 
     for minigroup, lpgbts in minigroups_swap.items():
         
@@ -256,10 +288,9 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
 
             phiGreater60.Add( lpgbt_hists[0][lpgbt] )
             phiLess60.Add( lpgbt_hists[1][lpgbt] )
-
             
-        phiGreater60_array = hist2array(phiGreater60)
-        phiLess60_array = hist2array(phiLess60) 
+        phiGreater60_array = TH1D2array(phiGreater60,return_error_squares=return_error_squares)
+        phiLess60_array = TH1D2array(phiLess60,return_error_squares=return_error_squares) 
 
         if ( root ):
             minigroup_hists_phiGreater60[minigroup] = phiGreater60
@@ -272,7 +303,7 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
     minigroup_hists.append(minigroup_hists_phiLess60)
 
     return minigroup_hists
-
+    
 def getlpGBTHists(data, module_hists):
 
     lpgbt_hists = []
@@ -310,7 +341,7 @@ def getlpGBTHists(data, module_hists):
     
     return lpgbt_hists
 
-def getMinilpGBTGroups(data, minigroup_type):
+def getMinilpGBTGroups(data, minigroup_type="minimal"):
 
     minigroups = {}
     counter = 0
@@ -440,7 +471,12 @@ def getBundledlpgbtHistsRoot(minigroup_hists,bundles):
 
 def getBundledlpgbtHists(minigroup_hists,bundles):
 
-    bundled_lpgbthists = []
+    use_error_squares=False
+    #Check if the minigroup_hists were produced
+    #with additional squared error information    
+    if ( minigroup_hists[0][0].ndim == 2 ):
+        use_error_squares=True
+        
     bundled_lpgbthists_list = []
 
     for p,phiselection in enumerate(minigroup_hists):
@@ -450,8 +486,11 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
         for i in range(len(bundles)):#loop over bundles
 
             #Create one lpgbt histogram per bundle
-            lpgbt_hist_list = np.zeros(42) 
-            
+            if not use_error_squares:
+                lpgbt_hist_list = np.zeros(42)
+            else:
+                lpgbt_hist_list = np.zeros((42,2))
+
             for minigroup in bundles[i]:#loop over each lpgbt in the bundle
                 lpgbt_hist_list+= phiselection[minigroup] 
 
@@ -462,8 +501,13 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
     return bundled_lpgbthists_list
 
 
-
 def calculateChiSquared(inclusive,grouped):
+
+    use_error_squares=False
+    #Check if the minigroup_hists were produced
+    #with additional squared error information    
+    if ( grouped[0][0].ndim == 2 ):
+        use_error_squares=True
 
     chi2_total = 0
     
@@ -472,9 +516,15 @@ def calculateChiSquared(inclusive,grouped):
         for key,hist in grouped[i].items():
 
             for b in range(len(hist)):
-                
-                squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )   
 
-                chi2_total+=squared_diff
+                if not use_error_squares:
+                    squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )
+                    chi2_total+=squared_diff
+                else:
+                    squared_diff = np.power(hist[b][0]-inclusive[i].GetBinContent(b+1)/24, 2 )
+                    squared_error = hist[b][1]
+
+                    if ( squared_error != 0 ):
+                        chi2_total+=squared_diff/squared_error
 
     return chi2_total

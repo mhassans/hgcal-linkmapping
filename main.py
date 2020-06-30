@@ -87,7 +87,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     
     
 
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None,include_errors_in_chi2=False):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -103,7 +103,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     lpgbt_hists = getlpGBTHists(data, module_hists)
 
     minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
-    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap)
+    minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap,return_error_squares=include_errors_in_chi2)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
     
     def mapping_max(state):
@@ -118,6 +118,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
         typicalchi2 = 600000000000
+        if include_errors_in_chi2:
+            typicalchi2 = 60000000
         if (chi2<chi2_min):
             chi2_min = chi2
             combbest = np.copy(state)
@@ -232,13 +234,20 @@ def main():
     signal.signal(signal.SIGUSR1,handler)
     signal.signal(signal.SIGXCPU,handler)
 
+    ROOT.TH1.SetDefaultSumw2()
+    
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
         correctionConfig = None
+        include_errors_in_chi2 = False
         if 'corrections' in config.keys():
             correctionConfig = config['corrections']
+        if 'include_errors_in_chi2' in subconfig.keys():
+            include_errors_in_chi2 = subconfig['include_errors_in_chi2']
+        
+            
         study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
-            minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig
+                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,include_errors_in_chi2=include_errors_in_chi2
             )
 
 
