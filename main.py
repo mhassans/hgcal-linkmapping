@@ -119,7 +119,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         typicalchi2 = 600000000000
         if include_errors_in_chi2:
-            typicalchi2 = 60000000
+            typicalchi2 = 10000000
         if (chi2<chi2_min):
             chi2_min = chi2
             combbest = np.copy(state)
