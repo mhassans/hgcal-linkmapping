@@ -105,8 +105,10 @@ def getModuleHists(HistFile):
                 PhiVsROverZ = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
-                phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )  
-                phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)                
+                # phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )  
+                # phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)                
+                phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2, nBinsPhi )  
+                phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2 - 1)                
 
 
     for i in range (5): #u
@@ -115,15 +117,19 @@ def getModuleHists(HistFile):
                 PhiVsROverZ = infiles[-1].Get("ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
-                phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )
-                phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)
+                # phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )
+                # phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)
+                phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2, nBinsPhi )
+                phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2 - 1)
 
     
     PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
     nBinsPhi = PhiVsROverZ.GetNbinsY()
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
-                
+    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
+    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2, nBinsPhi ) )
+    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 - 1 ) )
+
     module_hists.append(phiGreater60)
     module_hists.append(phiLess60)
             
@@ -423,7 +429,8 @@ def find_nearest(array, values):
     return indices
 
 def getBundles(minigroups_swap,combination):
-
+    #Reimplemented in externals/mlrose_mod/opt_probs.py
+    
     #Need to divide the minigroups into 24 groups taking into account their different size
     nBundles = 24
     #The weights are the numbers of lpgbts in each mini-groups

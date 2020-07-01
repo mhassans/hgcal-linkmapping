@@ -87,7 +87,7 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     
     
 
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=1,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None,include_errors_in_chi2=False):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None,include_errors_in_chi2=False):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
@@ -130,19 +130,21 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         return chi2
 
-    
     init_state = []
     if (initial_state == "example"):
         init_state = example_minigroup_configuration
     if (initial_state[-4:] == ".npy"):
         print (initial_state)
         init_state = np.hstack(np.load(initial_state,allow_pickle=True))
+        if ( len(init_state) != len(minigroups_swap) ):
+            print ( "Initial state should be the same length as the number of mini groups")
+            exit()
     elif (initial_state == "random"):
-       np.random.seed(random_seed)
-       init_state = np.arange(len(minigroups_swap))
-       np.random.shuffle(init_state)
+        np.random.seed(random_seed)
+        init_state = np.arange(len(minigroups_swap))
+        np.random.shuffle(init_state)
 
-       
+    
     fitness_cust = mlrose.CustomFitness(mapping_max)
     # Define optimization problem object
     problem_cust = mlrose.DiscreteOpt(length = len(init_state), fitness_fn = fitness_cust, maximize = False, max_val = len(minigroups_swap), minigroups = minigroups_swap)
@@ -193,15 +195,11 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
                 for lpgbt in lpgbts:
                     print (str(lpgbt) + ", "  , end = '')
 
-    elif algorithm == "random_hill_climb" or algorithm == "genetic_alg" or algorithm == "mimic" or algorithm == "simulated_annealing":
+    elif algorithm == "random_hill_climb" or algorithm == "simulated_annealing":
 
         try:
             if (algorithm == "random_hill_climb"):
                 best_state, best_fitness = mlrose.random_hill_climb(problem_cust, max_attempts=10000, max_iters=max_iterations, restarts=0, init_state=init_state, random_state=random_seed)
-            elif (algorithm == "genetic_alg"):
-                best_state, best_fitness = mlrose.genetic_alg(problem_cust, pop_size=200, mutation_prob=0.1, max_attempts=1000, max_iters=10000000, curve=False, random_state=random_seed)
-            elif (algorithm == "mimic"):
-                best_state, best_fitness = mlrose.mimic(problem_cust, pop_size=200,  keep_pct=0.2, max_attempts=10, max_iters=np.inf, curve=False, random_state=random_seed)
             elif (algorithm == "simulated_annealing"):
                 best_state, best_fitness = mlrose.simulated_annealing(problem_cust, schedule = schedule, max_attempts = 100000, max_iters = 10000000, init_state = init_state, random_state=random_seed)
                 
@@ -217,7 +215,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             file1.close( )
 
     else:
-        print("Algorithm "+ algorithm + " not known" )
+        print("Algorithm "+ algorithm + " currently not implemented" )
 
     
 def main():
