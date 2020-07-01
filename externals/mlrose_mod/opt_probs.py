@@ -495,6 +495,16 @@ class DiscreteOpt(OptProb):
 
         return state
 
+    def find_nearest(self,array, values):
+        indices = []
+        for value in values:
+            array_subtract = array - value
+            index = (np.abs(array_subtract)).argmin()
+            if array_subtract[index] > 0: index+=1
+            indices.append(index)
+        
+        return indices    
+    
     def getBundles(self,combination):
 
         minigroups = self.minigroups
@@ -502,8 +512,13 @@ class DiscreteOpt(OptProb):
         weights = np.array([ len(minigroups[x])  for x in combination ])
         cumulative_arr = weights.cumsum() / weights.sum()
         idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
-        bundles = np.array_split(combination,idx)
 
+        #Method 1
+        #idx = np.searchsorted(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+        #Method 2 (improved)
+        idx = self.find_nearest(cumulative_arr, np.linspace(0, 1, nBundles, endpoint=False)[1:])
+
+        bundles = np.array_split(combination,idx)
         return bundles
     
     def random_neighbor_swap(self):
