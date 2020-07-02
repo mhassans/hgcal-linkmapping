@@ -12,7 +12,7 @@ study_mapping:
   CMSSW_ModuleHists: dataROverZHistograms_v11_relval_neutrino_gun_20200611.root
 
   #Algorithms for minimisation:
-  #'random_hill_climb', 'simulated_annealing', 'genetic_alg', 'save_root'
+  #'random_hill_climb', 'simulated_annealing', 'save_root'
   algorithm: random_hill_climb
 
   #initial state configuation:
