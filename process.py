@@ -9,6 +9,7 @@ import itertools
 import random
 import sys
 from root_numpy import hist2array
+import ctypes
 
 np.set_printoptions(threshold=sys.maxsize)
 pd.set_option('display.max_rows', None)
@@ -90,9 +91,53 @@ def getModuleHists(HistFile):
 
     module_hists = []
     inclusive_hists = []
+
     
     infiles.append(ROOT.TFile.Open(HistFile,"READ"))
 
+    if not infiles[-1]:
+        raise EnvironmentError
+    
+    PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
+    PhiVsROverZ_profile = PhiVsROverZ.ProfileX()
+    nBinsPhi = PhiVsROverZ.GetNbinsY()    
+    phi_divisions = np.empty(0)
+    for b in range(PhiVsROverZ_profile.GetNbinsX()+1):
+        phi_divisions = np.append(phi_divisions,PhiVsROverZ_profile.GetBinContent(b))
+
+    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
+    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
+    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2, nBinsPhi ) )
+    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 - 1 ) )
+
+
+    #The split is performed for a different phi bin, for each R/Z bin 
+    projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60" )
+    projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" )
+    projectionX_PhiGreater60.Reset()
+    projectionX_PhiLess60.Reset()
+
+    edges = np.zeros(PhiVsROverZ.GetNbinsY()+1,dtype='double')
+    PhiVsROverZ.GetYaxis().GetLowEdge(edges) 
+
+    #Get the phi bin index to split for each R/Z bin
+    split_indices = []
+
+    for value in phi_divisions:
+        split_indices.append( (np.abs(edges - value)).argmin() )
+        #split_indices.append( nBinsPhi//2 ) #for a uniform split over r/z bins
+
+    #Get an independent projection for each R/Z bin
+    for x in range(1,PhiVsROverZ.GetNbinsX()+1):
+        error = ctypes.c_double(-1)
+        projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x]+1),int(nBinsPhi),error))
+        projectionX_PhiGreater60.SetBinError(x,error.value)
+        projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x]),error))
+        projectionX_PhiLess60.SetBinError(x,error.value)
+
+    inclusive_hists.append(projectionX_PhiGreater60)
+    inclusive_hists.append(projectionX_PhiLess60)
+    
     phiGreater60 = {}
     phiLess60 = {}
     
@@ -107,9 +152,24 @@ def getModuleHists(HistFile):
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
                 # phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )  
                 # phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)                
-                phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2, nBinsPhi )  
-                phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2 - 1)                
+                # phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2, nBinsPhi )  
+                # phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2 - 1)                
 
+                projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60" )
+                projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60" )
+                projectionX_PhiGreater60.Reset()
+                projectionX_PhiLess60.Reset()
+
+                #Get an independent projection for each R/Z bin
+                for x in range(1,PhiVsROverZ.GetNbinsX()+1):
+                    error = ctypes.c_double(-1)
+                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x]+1),int(nBinsPhi),error))
+                    projectionX_PhiGreater60.SetBinError(x,error.value)
+                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x]),error))
+                    projectionX_PhiLess60.SetBinError(x,error.value)
+
+                phiGreater60[0,i,j,k] = projectionX_PhiGreater60
+                phiLess60[0,i,j,k] = projectionX_PhiLess60
 
     for i in range (5): #u
         for j in range (12): #v
@@ -119,16 +179,25 @@ def getModuleHists(HistFile):
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
                 # phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )
                 # phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)
-                phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2, nBinsPhi )
-                phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2 - 1)
+                # phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2, nBinsPhi )
+                # phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2 - 1)
 
-    
-    PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
-    nBinsPhi = PhiVsROverZ.GetNbinsY()
-    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
-    # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2, nBinsPhi ) )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 - 1 ) )
+                projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60" )
+                projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60" )
+                projectionX_PhiGreater60.Reset()
+                projectionX_PhiLess60.Reset()
+
+                #Get an independent projection for each R/Z bin
+                for x in range(1,PhiVsROverZ.GetNbinsX()+1):
+                    error = ctypes.c_double(-1)
+                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x]+1),int(nBinsPhi),error))
+                    projectionX_PhiGreater60.SetBinError(x,error.value)
+                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x]),error))
+                    projectionX_PhiLess60.SetBinError(x,error.value)
+                    
+                phiGreater60[1,i,j,k] = projectionX_PhiGreater60
+                phiLess60[1,i,j,k] = projectionX_PhiLess60
+
 
     module_hists.append(phiGreater60)
     module_hists.append(phiLess60)
