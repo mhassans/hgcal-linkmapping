@@ -146,22 +146,26 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
     bundled_lpgbthists_allevents = []
     
-    ROverZ_per_module = {}
-    ROverZ_per_module_Phi60 = {}
+    ROverZ_per_module_PhiGreater60 = {}
+    ROverZ_per_module_PhiLess60 = {}
+
+    #Value of split in phi (normally 60 degrees)
+    #phi_split = np.pi/3
+    phi_split = 11*np.pi/36 #55 degrees
     
     for i in range (15):
         for j in range (15):
             for k in range (1,53):
                 if  k < 28 and k%2 == 0:
                     continue
-                ROverZ_per_module[0,i,j,k] = np.empty(0)
-                ROverZ_per_module_Phi60[0,i,j,k] = np.empty(0)
+                ROverZ_per_module_PhiGreater60[0,i,j,k] = np.empty(0)
+                ROverZ_per_module_PhiLess60[0,i,j,k] = np.empty(0)
 
     for i in range (5):
         for j in range (12):
             for k in range (37,53):
-                ROverZ_per_module[1,i,j,k] = np.empty(0)
-                ROverZ_per_module_Phi60[1,i,j,k] = np.empty(0)
+                ROverZ_per_module_PhiGreater60[1,i,j,k] = np.empty(0)
+                ROverZ_per_module_PhiLess60[1,i,j,k] = np.empty(0)
 
     try:
         for entry,event in enumerate(tree):
@@ -169,9 +173,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             #     break
             print ("Event number " + str(entry))
     
-            for key in ROverZ_per_module.keys():
-                ROverZ_per_module[key] = np.empty(0)
-                ROverZ_per_module_Phi60[key] = np.empty(0)
+            for key in ROverZ_per_module_PhiGreater60.keys():
+                ROverZ_per_module_PhiGreater60[key] = np.empty(0)
+                ROverZ_per_module_PhiLess60[key] = np.empty(0)
 
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
@@ -182,41 +186,43 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 if ( u > -990 ): #Silicon
                     uv,sector = rotate_to_sector_0(u,v,layer)
                     roverz_phi = getROverZPhi(x,y,z,sector)
-                    
-                    ROverZ_per_module[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module[0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
-                    if (roverz_phi[1] < np.pi/3):
-                        ROverZ_per_module_Phi60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_Phi60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+
+                    if (roverz_phi[1] >= phi_split):
+                        ROverZ_per_module_PhiGreater60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiGreater60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
+                    elif (roverz_phi[1] < phi_split):
+                        ROverZ_per_module_PhiLess60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiLess60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         
                 else: #Scintillator  
                     eta = cellu
                     phi = cellv
                     etaphi,sector = etaphiMapping(layer,[eta,phi])
                     roverz_phi = getROverZPhi(x,y,z,sector)
-                    
-                    ROverZ_per_module[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
-                    if (roverz_phi[1] < np.pi/3):
-                        ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_Phi60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
+
+                    if (roverz_phi[1] >= phi_split):
+                        ROverZ_per_module_PhiGreater60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiGreater60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
+                    elif (roverz_phi[1] < phi_split):
+                        ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
-            ROverZ_Inclusive = np.empty(0)
-            ROverZ_Inclusive_Phi60 = np.empty(0)
+            ROverZ_Inclusive_PhiGreater60 = np.empty(0)
+            ROverZ_Inclusive_PhiLess60 = np.empty(0)
 
-            for key,value in ROverZ_per_module.items():
-                ROverZ_Inclusive = np.append(ROverZ_Inclusive,value)
-            for key,value in ROverZ_per_module_Phi60.items():
-                ROverZ_Inclusive_Phi60 = np.append(ROverZ_Inclusive_Phi60,value)
+            for key,value in ROverZ_per_module_PhiGreater60.items():
+                ROverZ_Inclusive_PhiGreater60 = np.append(ROverZ_Inclusive_PhiGreater60,value)
+            for key,value in ROverZ_per_module_PhiLess60.items():
+                ROverZ_Inclusive_PhiLess60 = np.append(ROverZ_Inclusive_PhiLess60,value)
 
             #Bin the TC module data
-            module_hists_inc = {}
-            module_hists_phi60 = {}
+            module_hists_phigreater60 = {}
+            module_hists_philess60 = {}
 
-            for key,value in ROverZ_per_module.items():
-                module_hists_inc[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
-            for key,value in ROverZ_per_module_Phi60.items():
-                module_hists_phi60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
+            for key,value in ROverZ_per_module_PhiGreater60.items():
+                module_hists_phigreater60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
+            for key,value in ROverZ_per_module_PhiLess60.items():
+                module_hists_philess60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
 
             #the module hists are a numpy array of size 42
-            module_hists = [module_hists_inc,module_hists_phi60]
+            module_hists = [module_hists_phigreater60,module_hists_philess60]
 
             #Apply geometry corrections
             applyGeometryCorrectionsNumpy( module_hists, modulesToCorrect )
@@ -271,9 +277,9 @@ def plotMeanMax(eventData, outdir = ".", includePhi60 = True):
         list_over_events_maximum = np.maximum(list_over_events_inclusive, list_over_events_phi60*2 )
 
         if ( includePhi60 ):
-            list_over_events = list_over_events_inclusive
-        else:
             list_over_events = list_over_events_maximum
+        else:
+            list_over_events = list_over_events_inclusive
 
         hist_max = np.amax(list_over_events,axis=0)
         hist_mean = np.mean(list_over_events, axis=0)
@@ -299,6 +305,7 @@ def plotMeanMax(eventData, outdir = ".", includePhi60 = True):
     #Plot maxima for all bundles on the same plot
     for hist in hists_max:
         pl.bar((inclusive_hists[1])[:-1], hist, width=0.012,align='edge')
+    pl.ylim((0,31))
     pl.xlabel('r/z')
     pl.ylabel('Maximum number of TCs per bin')
     pl.savefig( outdir + "/maxima.png" )
@@ -317,23 +324,23 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
 
-    #Names for inclusive and phi < 60 indices
-    inclusive = 0
-    phi60 = 1
+    #Names for phi > 60 and phi < 60 indices
+    phigreater60 = 0
+    philess60 = 1
     
     #Loop over all events to get the maximum per bin over bundles (per event)
     
-    inclusive_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    phi60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    phigreater60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    philess60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
     
     for e,event in enumerate(bundled_lpgbthists_allevents):
-        inclusive_bundled_lpgbthists_allevents[e] = np.array(list(event[inclusive].values()))
-        phi60_bundled_lpgbthists_allevents[e] = np.array(list(event[phi60].values()))
+        phigreater60_bundled_lpgbthists_allevents[e] = np.array(list(event[phigreater60].values()))
+        philess60_bundled_lpgbthists_allevents[e] = np.array(list(event[philess60].values()))
 
     #Form the intersection of the inclusive and phi60 arrays,
     #taking for each bin the maximum of the inclusive and phi60 x 2
-
-    maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phi60_bundled_lpgbthists_allevents*2)
+    inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
+    maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents*2)
     
     if ( includePhi60 ):
         hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
@@ -363,10 +370,11 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     
     for event in bundled_lpgbthists_allevents:
 
-        bundle_hists_inclusive = np.array(list(event[inclusive].values()))
-        bundle_hists_phi60 = np.array(list(event[phi60].values()))
-
-        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phi60*2)
+        bundle_hists_phigreater60 = np.array(list(event[phigreater60].values()))
+        bundle_hists_philess60 = np.array(list(event[philess60].values()))
+        bundle_hists_inclusive = bundle_hists_philess60 + bundle_hists_phigreater60
+        #bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_philess60*2)
+        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phigreater60*2)
         #24 arrays, with length of 42
         
         sum99 = []
@@ -408,7 +416,12 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     print ("Sum of per-bin maximum TC (over bundles and events) with 1% truncation =", np.round(np.sum(np.amax(max_per_event_perbin99,axis=0)/6)))
     print ("Sum of per-bin maximum TC (over bundles and events) with 5% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin95,axis=0)/6)))
     print ("Sum of per-bin maximum TC (over bundles and events) with 10% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin90,axis=0)/6)))
-        
+
+    # print ("Sum of per-bin maximum TC (over bundles and events) = ",  np.round(np.sum(np.amax(max_per_event_perbin,axis=0)[8:]/6)))
+    # print ("Sum of per-bin maximum TC (over bundles and events) with 1% truncation =", np.round(np.sum(np.amax(max_per_event_perbin99,axis=0)[8:]/6)))
+    # print ("Sum of per-bin maximum TC (over bundles and events) with 5% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin95,axis=0)[8:]/6)))
+    # print ("Sum of per-bin maximum TC (over bundles and events) with 10% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin90,axis=0)[8:]/6)))
+
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='1% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='5% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event90),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='10% truncation')    
