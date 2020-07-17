@@ -91,8 +91,11 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
-    inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
-    
+    try:
+        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
+    except EnvironmentError:
+        print ( "File " + CMSSW_ModuleHists + " does not exist" )
+        exit()
     # Apply various corrections to r/z distributions from CMSSW
 
     if correctionConfig != None:
