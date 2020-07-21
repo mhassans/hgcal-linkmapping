@@ -192,7 +192,7 @@ int main(){
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
 
   bool createFlatFile = false;
-  int nPhiBins = 32;//5 degree bins
+  int nPhiBins = 32*3;//5/3 degree bins
   double phiMax = 7.*M_PI/9.;//140 degrees
   double phiMin = -1.*M_PI/9.;//-20 degrees
   
