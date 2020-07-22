@@ -189,15 +189,15 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             # if entry > 10:
             #     break
             print ("Event number " + str(entry))
-    
+            
             for key in ROverZ_per_module_PhiGreater60.keys():
                 ROverZ_per_module_PhiGreater60[key] = np.empty(0)
                 ROverZ_per_module_PhiLess60[key] = np.empty(0)
-
+                
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
             #(inclusively and for phi < 60)
-            
+
             for u,v,layer,x,y,z,cellu,cellv in zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv):
 
                 if ( u > -990 ): #Silicon
@@ -240,7 +240,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 module_hists_phigreater60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
             for key,value in ROverZ_per_module_PhiLess60.items():
                 module_hists_philess60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
-
+            
             #the module hists are a numpy array of size 42
             module_hists = [module_hists_phigreater60,module_hists_philess60]
 
@@ -252,9 +252,8 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
             #Sum the minigroup histograms to get the bundle histograms
             bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-
+            
             bundled_lpgbthists_allevents.append(bundled_lpgbthists)
-
 
     except KeyboardInterrupt:
         print("interrupt received, stopping and saving")
@@ -363,6 +362,8 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
     maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents*2)
     #maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phigreater60_bundled_lpgbthists_allevents*2)
+
+
     
     if ( includePhi60 ):
         hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
@@ -464,6 +465,20 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     pl.ylabel('Ratio of 1% truncation to likely best')
     pl.ylim((0,10))
     pl.savefig( outdir + "/ratio_to_best.png" )
+
+
+    pl.clf()
+    for bundle in np.sum(phigreater60_bundled_lpgbthists_allevents,axis=0):
+        #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
+        pl.step((inclusive_hists[1])[:-1], bundle )
+    pl.ylim((0,140000))
+    pl.savefig( outdir + "/phiGreater60Integrated.png" )
+    pl.clf()
+    for bundle in np.sum(philess60_bundled_lpgbthists_allevents,axis=0):
+        pl.step((inclusive_hists[1])[:-1], bundle)
+    pl.ylim((0,140000))
+    pl.savefig( outdir + "/phiLess60Integrated.png" )
+
     
 def main():
 
