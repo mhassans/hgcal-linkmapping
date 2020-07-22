@@ -92,7 +92,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     try:
-        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists)
+        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
     except EnvironmentError:
         print ( "File " + CMSSW_ModuleHists + " does not exist" )
         exit()

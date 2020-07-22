@@ -11,12 +11,17 @@ corrections:
   ldmToHdmCorrectionType : 'FixedOcc'
   nTCCorrectionFile: 'data/different_nTCs_linkMapping.txt'
 
-checkFluctuations:
+checkFluctuations:  
   initial_state: bundles_job_best_neutrinogun_200617.npy
   cmsswNtuple: data/small_v11_relval_ttbar_200611.root
   outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
 
+  #If value is a root file, assume per bin splitting
+  #Else the value indicates the fixed point in phi at which the split should occur
+  phisplit:
+    value: data/ROverZHistograms_v11_relval_ttbar_20200716.root
+  
 plot_MeanMax:
   eventData: data/alldata_neutrino_gun_2006022.txt
   includePhi60: True

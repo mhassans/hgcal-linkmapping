@@ -6,6 +6,7 @@ import matplotlib.pyplot as pl
 import math
 import pickle
 from process import loadDataFile
+from process import getPhiSplitIndices
 from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
 from rotate import rotate_to_sector_0
 from geometryCorrections import applyGeometryCorrectionsNumpy,loadSiliconNTCCorrectionFile
@@ -119,8 +120,13 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", correctionConfig=None):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", correctionConfig=None, phisplitConfig=None):
 
+    nROverZBins = 42
+    #To get binning for r/z histograms
+    inclusive_hists = np.histogram( np.empty(0), bins = nROverZBins, range = (0.076,0.58) )
+    roverzBinning = (inclusive_hists[1])[:-1]
+    
     #List of which minigroups are assigned to each bundle 
     init_state = np.hstack(np.load(initial_state,allow_pickle=True))
 
@@ -150,9 +156,20 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     ROverZ_per_module_PhiLess60 = {}
 
     #Value of split in phi (normally 60 degrees)
-    #phi_split = np.pi/3
-    phi_split = 11*np.pi/36 #55 degrees
-    
+    #phi_split = 11*np.pi/36 #55 degrees
+    if phisplitConfig == None:
+        phi_split = np.full( nROverZBins, np.pi/3)
+    else:
+        if (str(phisplitConfig['value']).find(".root") == -1):
+            phi_split = np.full( nROverZBins, phisplitConfig['value'])
+        else:
+            file_roverz_inclusive = ROOT.TFile(str(phisplitConfig['value']),"READ")
+            PhiVsROverZ_Total = file_roverz_inclusive.Get("ROverZ_Inclusive" )
+            split_indices = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
+            phi_split = np.zeros( nROverZBins )
+            for i,idx in enumerate(split_indices):
+                phi_split[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idx))
+
     for i in range (15):
         for j in range (15):
             for k in range (1,53):
@@ -186,10 +203,12 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 if ( u > -990 ): #Silicon
                     uv,sector = rotate_to_sector_0(u,v,layer)
                     roverz_phi = getROverZPhi(x,y,z,sector)
+                    roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
 
-                    if (roverz_phi[1] >= phi_split):
+                    if (roverz_phi[1] >= phi_split[roverz_bin-1]):
+                        #There should be no r/z values lower than 0.076
                         ROverZ_per_module_PhiGreater60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiGreater60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
-                    elif (roverz_phi[1] < phi_split):
+                    elif (roverz_phi[1] < phi_split[roverz_bin-1]):
                         ROverZ_per_module_PhiLess60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiLess60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         
                 else: #Scintillator  
@@ -197,29 +216,30 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     phi = cellv
                     etaphi,sector = etaphiMapping(layer,[eta,phi])
                     roverz_phi = getROverZPhi(x,y,z,sector)
-
-                    if (roverz_phi[1] >= phi_split):
+                    roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
+                    
+                    if (roverz_phi[1] >= phi_split[roverz_bin-1]):
                         ROverZ_per_module_PhiGreater60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiGreater60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
-                    elif (roverz_phi[1] < phi_split):
+                    elif (roverz_phi[1] < phi_split[roverz_bin-1]):
                         ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
-            ROverZ_Inclusive_PhiGreater60 = np.empty(0)
-            ROverZ_Inclusive_PhiLess60 = np.empty(0)
+            #ROverZ_Inclusive_PhiGreater60 = np.empty(0)
+            #ROverZ_Inclusive_PhiLess60 = np.empty(0)
 
-            for key,value in ROverZ_per_module_PhiGreater60.items():
-                ROverZ_Inclusive_PhiGreater60 = np.append(ROverZ_Inclusive_PhiGreater60,value)
-            for key,value in ROverZ_per_module_PhiLess60.items():
-                ROverZ_Inclusive_PhiLess60 = np.append(ROverZ_Inclusive_PhiLess60,value)
+            # for key,value in ROverZ_per_module_PhiGreater60.items():
+            #     ROverZ_Inclusive_PhiGreater60 = np.append(ROverZ_Inclusive_PhiGreater60,value)
+            # for key,value in ROverZ_per_module_PhiLess60.items():
+            #     ROverZ_Inclusive_PhiLess60 = np.append(ROverZ_Inclusive_PhiLess60,value)
 
             #Bin the TC module data
             module_hists_phigreater60 = {}
             module_hists_philess60 = {}
 
             for key,value in ROverZ_per_module_PhiGreater60.items():
-                module_hists_phigreater60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
+                module_hists_phigreater60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
             for key,value in ROverZ_per_module_PhiLess60.items():
-                module_hists_philess60[key] = np.histogram( value, bins = 42, range = (0.076,0.58) )[0]
+                module_hists_philess60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
 
             #the module hists are a numpy array of size 42
             module_hists = [module_hists_phigreater60,module_hists_philess60]
@@ -296,8 +316,9 @@ def plotMeanMax(eventData, outdir = ".", includePhi60 = True):
         # for e,event in enumerate(list_over_events):
         #     pl.bar((inclusive_hists[1])[:-1], event, width=0.012,fill=False)
         #     #if (e>200): break
-        
-        pl.savefig( outdir + "/bundle_" + str(bundle) + "max.png" )
+
+        pl.ylim((0,31))
+        pl.savefig( outdir + "/bundle_" + str(bundle) + "max.png" )        
         pl.clf()
 
         hists_max.append(hist_max)
@@ -341,6 +362,7 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #taking for each bin the maximum of the inclusive and phi60 x 2
     inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
     maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents*2)
+    #maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phigreater60_bundled_lpgbthists_allevents*2)
     
     if ( includePhi60 ):
         hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
@@ -373,8 +395,8 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
         bundle_hists_phigreater60 = np.array(list(event[phigreater60].values()))
         bundle_hists_philess60 = np.array(list(event[philess60].values()))
         bundle_hists_inclusive = bundle_hists_philess60 + bundle_hists_phigreater60
-        #bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_philess60*2)
-        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phigreater60*2)
+        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_philess60*2)
+        #bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phigreater60*2)
         #24 arrays, with length of 42
         
         sum99 = []
@@ -466,7 +488,7 @@ def main():
             correctionConfig = config['corrections']
 
         subconfig = config['checkFluctuations']
-        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], correctionConfig = correctionConfig)
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'])
 
     #Plotting functions
     

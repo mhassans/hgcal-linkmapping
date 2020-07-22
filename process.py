@@ -87,11 +87,37 @@ def getModuleHists1D(HistFile):
             
     return inclusive_hists,module_hists
 
-def getModuleHists(HistFile):
+
+def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55 ):
+    #If split is a fixed value in each R/Z bin, the fixvalue can be set, otherwise it is ignored
+    #Fix value should be a multiple of 5/3 degrees, but if not is anyway forced to the closest multiple
+
+    PhiVsROverZ_profile = PhiVsROverZ.ProfileX()
+
+    
+    if ( split == "per_roverz_bin" ):
+        phi_divisions = np.empty(0)
+        for b in range(1, PhiVsROverZ_profile.GetNbinsX()+1):#begin from first bin
+            phi_divisions = np.append(phi_divisions,PhiVsROverZ_profile.GetBinContent(b))
+    elif ( split == "fixed" ):
+        phi_divisions = np.full(PhiVsROverZ_profile.GetNbinsX(), np.radians(fixvalue))
+
+
+    #The Zeroth element is the bin 1 low edge
+    edges = np.zeros(PhiVsROverZ.GetNbinsY()+1,dtype='double')
+    PhiVsROverZ.GetYaxis().GetLowEdge(edges) 
+
+    split_indices = []
+
+    for value in phi_divisions:
+        split_indices.append( (np.abs(edges - value)).argmin() + 1 )# +1 so that an element is converted into a ROOT bin number
+
+    return split_indices
+    
+def getModuleHists(HistFile, split = "fixed", fixvalue = 55):
 
     module_hists = []
     inclusive_hists = []
-
     
     infiles.append(ROOT.TFile.Open(HistFile,"READ"))
 
@@ -99,11 +125,8 @@ def getModuleHists(HistFile):
         raise EnvironmentError
     
     PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
-    PhiVsROverZ_profile = PhiVsROverZ.ProfileX()
+
     nBinsPhi = PhiVsROverZ.GetNbinsY()    
-    phi_divisions = np.empty(0)
-    for b in range(PhiVsROverZ_profile.GetNbinsX()+1):
-        phi_divisions = np.append(phi_divisions,PhiVsROverZ_profile.GetBinContent(b))
 
     # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
     # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
@@ -111,28 +134,25 @@ def getModuleHists(HistFile):
     # inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 - 1 ) )
 
 
-    #The split is performed for a different phi bin, for each R/Z bin 
+    #Get the phi indices where the split between "high" and "low phi should be
+    #Could either be constant with R/Z, or different for each R/Z bin 
+
+    #Gives the bin number, whose low edge is the splitting point
+    split_indices = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = fixvalue)
+
+    
     projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60" )
     projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" )
     projectionX_PhiGreater60.Reset()
     projectionX_PhiLess60.Reset()
 
-    edges = np.zeros(PhiVsROverZ.GetNbinsY()+1,dtype='double')
-    PhiVsROverZ.GetYaxis().GetLowEdge(edges) 
-
-    #Get the phi bin index to split for each R/Z bin
-    split_indices = []
-
-    for value in phi_divisions:
-        split_indices.append( (np.abs(edges - value)).argmin() )
-        #split_indices.append( nBinsPhi//2 ) #for a uniform split over r/z bins
 
     #Get an independent projection for each R/Z bin
     for x in range(1,PhiVsROverZ.GetNbinsX()+1):
         error = ctypes.c_double(-1)
-        projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x]+1),int(nBinsPhi),error))
+        projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
         projectionX_PhiGreater60.SetBinError(x,error.value)
-        projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x]),error))
+        projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
         projectionX_PhiLess60.SetBinError(x,error.value)
 
     inclusive_hists.append(projectionX_PhiGreater60)
@@ -163,9 +183,9 @@ def getModuleHists(HistFile):
                 #Get an independent projection for each R/Z bin
                 for x in range(1,PhiVsROverZ.GetNbinsX()+1):
                     error = ctypes.c_double(-1)
-                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x]+1),int(nBinsPhi),error))
+                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
                     projectionX_PhiGreater60.SetBinError(x,error.value)
-                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x]),error))
+                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
                     projectionX_PhiLess60.SetBinError(x,error.value)
 
                 phiGreater60[0,i,j,k] = projectionX_PhiGreater60
@@ -190,9 +210,9 @@ def getModuleHists(HistFile):
                 #Get an independent projection for each R/Z bin
                 for x in range(1,PhiVsROverZ.GetNbinsX()+1):
                     error = ctypes.c_double(-1)
-                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x]+1),int(nBinsPhi),error))
+                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
                     projectionX_PhiGreater60.SetBinError(x,error.value)
-                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x]),error))
+                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
                     projectionX_PhiLess60.SetBinError(x,error.value)
                     
                 phiGreater60[1,i,j,k] = projectionX_PhiGreater60
@@ -343,7 +363,7 @@ def TH1D2array(hist, include_overflow=False, return_error_squares=False):
     return array
     
 
-def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False, return_error_squares=False):
+def getMiniGroupHists(lpgbt_hists, minigroups_swap, root=False, return_error_squares=False):
     
     minigroup_hists = []
     minigroup_hists_errors = []
