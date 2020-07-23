@@ -155,13 +155,12 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     ROverZ_per_module_PhiGreater60 = {}
     ROverZ_per_module_PhiLess60 = {}
 
-    #Value of split in phi (normally 60 degrees)
-    #phi_split = 11*np.pi/36 #55 degrees
+    #Value of split in phi (nominally 60 degrees)
     if phisplitConfig == None:
-        phi_split = np.full( nROverZBins, np.pi/3)
+        phi_split = np.full( nROverZBins, np.pi/3 )
     else:
         if (str(phisplitConfig['value']).find(".root") == -1):
-            phi_split = np.full( nROverZBins, phisplitConfig['value'])
+            phi_split = np.full( nROverZBins, phisplitConfig['value'] )
         else:
             file_roverz_inclusive = ROOT.TFile(str(phisplitConfig['value']),"READ")
             PhiVsROverZ_Total = file_roverz_inclusive.Get("ROverZ_Inclusive" )
@@ -188,7 +187,8 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
         for entry,event in enumerate(tree):
 
             if ( beginEvent != -1 and entry < beginEvent ):
-                print ("Skipping Event number " + str(entry))
+                if ( entry == 0 ):
+                    print ("Event number less than " + str(beginEvent) + ", continue" )
                 continue;
 
             if ( endEvent != -1 and entry > endEvent ):
@@ -233,14 +233,6 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                         ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
-            #ROverZ_Inclusive_PhiGreater60 = np.empty(0)
-            #ROverZ_Inclusive_PhiLess60 = np.empty(0)
-
-            # for key,value in ROverZ_per_module_PhiGreater60.items():
-            #     ROverZ_Inclusive_PhiGreater60 = np.append(ROverZ_Inclusive_PhiGreater60,value)
-            # for key,value in ROverZ_per_module_PhiLess60.items():
-            #     ROverZ_Inclusive_PhiLess60 = np.append(ROverZ_Inclusive_PhiLess60,value)
-
             #Bin the TC module data
             module_hists_phigreater60 = {}
             module_hists_philess60 = {}
@@ -261,7 +253,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
             #Sum the minigroup histograms to get the bundle histograms
             bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
-            
+
             bundled_lpgbthists_allevents.append(bundled_lpgbthists)
 
     except KeyboardInterrupt:
@@ -454,19 +446,10 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     print ("Sum of per-bin maximum TC (over bundles and events) with 5% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin95,axis=0)/6)))
     print ("Sum of per-bin maximum TC (over bundles and events) with 10% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin90,axis=0)/6)))
 
-    # print ("Sum of per-bin maximum TC (over bundles and events) = ",  np.round(np.sum(np.amax(max_per_event_perbin,axis=0)[8:]/6)))
-    # print ("Sum of per-bin maximum TC (over bundles and events) with 1% truncation =", np.round(np.sum(np.amax(max_per_event_perbin99,axis=0)[8:]/6)))
-    # print ("Sum of per-bin maximum TC (over bundles and events) with 5% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin95,axis=0)[8:]/6)))
-    # print ("Sum of per-bin maximum TC (over bundles and events) with 10% truncation = ", np.round(np.sum(np.amax(max_per_event_perbin90,axis=0)[8:]/6)))
-
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='1% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='5% truncation')
     pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event90),axis=1)/(6*24),50,(0,5),histtype='step',log=True,label='10% truncation')    
     pl.xlabel('Number of TCs truncated on average per bundle')
-    # pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event99),axis=1)/(6),50,(0,100),histtype='step',log=True,label='1% truncation')
-    # pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event95),axis=1)/(6),50,(0,100),histtype='step',log=True,label='5% truncation')
-    # pl.hist(np.sum(np.array(total_per_event)-np.array(total_per_event90),axis=1)/(6),50,(0,100),histtype='step',log=True,label='10% truncation')    
-    # pl.xlabel('Number of TCs truncated')
     
     pl.ylabel('Number of Events')
     pl.legend()
@@ -480,10 +463,10 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     pl.ylim((0,10))
     pl.savefig( outdir + "/ratio_to_best.png" )
 
-
+    #As a cross check plot the bundle R/Z histograms integrated over all events.
+    #These should be the same as those produced by plotbundles.py
     pl.clf()
     for bundle in np.sum(phigreater60_bundled_lpgbthists_allevents,axis=0):
-        #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
         pl.step((inclusive_hists[1])[:-1], bundle )
     pl.ylim((0,1100000))
     pl.savefig( outdir + "/phiGreater60Integrated.png" )
