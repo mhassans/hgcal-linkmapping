@@ -120,7 +120,7 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", correctionConfig=None, phisplitConfig=None):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", correctionConfig=None, phisplitConfig=None, beginEvent = -1, endEvent = -1):
 
     nROverZBins = 42
     #To get binning for r/z histograms
@@ -186,6 +186,15 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
     try:
         for entry,event in enumerate(tree):
+
+            if ( beginEvent != -1 and entry < beginEvent ):
+                print ("Skipping Event number " + str(entry))
+                continue;
+
+            if ( endEvent != -1 and entry > endEvent ):
+                print ("Event number greater than " + str(endEvent) + ", break" )
+                break;
+
             # if entry > 10:
             #     break
             print ("Event number " + str(entry))
@@ -261,6 +270,11 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     finally:
 
         #Write all data to file for later analysis (Pickling)
+        if ( beginEvent != -1 ):
+            outputName = outputName + "_from" + str(beginEvent)
+        if ( endEvent != -1 ):
+            outputName = outputName + "_to" + str(endEvent)
+        
         with open( outputName + ".txt", "wb") as filep:
             pickle.dump(bundled_lpgbthists_allevents, filep)
 
@@ -471,12 +485,12 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     for bundle in np.sum(phigreater60_bundled_lpgbthists_allevents,axis=0):
         #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
         pl.step((inclusive_hists[1])[:-1], bundle )
-    pl.ylim((0,140000))
+    pl.ylim((0,1100000))
     pl.savefig( outdir + "/phiGreater60Integrated.png" )
     pl.clf()
     for bundle in np.sum(philess60_bundled_lpgbthists_allevents,axis=0):
         pl.step((inclusive_hists[1])[:-1], bundle)
-    pl.ylim((0,140000))
+    pl.ylim((0,1100000))
     pl.savefig( outdir + "/phiLess60Integrated.png" )
 
     
@@ -503,7 +517,7 @@ def main():
             correctionConfig = config['corrections']
 
         subconfig = config['checkFluctuations']
-        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'])
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'], beginEvent = subconfig['beginEvent'], endEvent = subconfig['endEvent'])
 
     #Plotting functions
     
