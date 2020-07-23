@@ -5,7 +5,25 @@ import yaml
 import numpy as np
 from process import loadDataFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists
 from geometryCorrections import applyGeometryCorrections
+from root_numpy import hist2array
+import matplotlib.pyplot as pl
 
+def print_numpy_plot(hists,plotname):
+
+    inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
+
+    numpy_hists = []
+    for hist in hists:
+        numpy_hists.append( hist2array(hist) )
+    
+    for bundle in numpy_hists:
+        #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
+        pl.step((inclusive_hists[1])[:-1], bundle )
+
+    pl.ylim((0,1100000))
+    pl.savefig( plotname + ".png" )
+    pl.clf()
+    
 def print_ratio_plot(inclusive,individual,ratio,plotname):
     
     c1 = ROOT.TCanvas("c1","",800,600)
@@ -23,6 +41,7 @@ def print_ratio_plot(inclusive,individual,ratio,plotname):
     inclusive.SetLineColor(ROOT.kRed)
     inclusive.SetTitle(";r/z;Number of entries")
     inclusive.Draw("HIST")
+    #inclusive.Draw("E1")
     ROOT.gStyle.SetOptStat(0)
     inclusive.SetMaximum(1100E3)
     inclusive.GetYaxis().SetTitleOffset(1.9);
@@ -32,10 +51,12 @@ def print_ratio_plot(inclusive,individual,ratio,plotname):
     inclusive.GetYaxis().SetLabelSize(25);
     for hist in individual:
         hist.Draw("HISTsame")
+        #hist.Draw("E1same")
     p2.cd()
     for hist in ratio:
         hist.SetTitle(";r/z;Ratio to inclusive")
         hist.Draw("HISTsame")
+        #hist.Draw("E1same")
         hist.GetYaxis().SetRangeUser(-1,3);
         hist.GetYaxis().SetTitleOffset(0.5);
         hist.GetYaxis().CenterTitle();
@@ -102,7 +123,8 @@ def main():
         data = loadDataFile(MappingFile) #dataframe
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
-        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists)
+        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
+        #inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "fixed", fixvalue = 55)
         if 'corrections' in config.keys():
             if config['corrections'] != None:
                 print ( "Applying geometry corrections" )
@@ -114,14 +136,14 @@ def main():
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
 
         inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input0")
-        inclusive.Add( inclusive_hists_input[1] )
+        #inclusive.Add( inclusive_hists_input[1] )
         phi60 = inclusive_hists_input[1]
         inclusive.Scale(1./24)
         phi60.Scale(1./24)
 
         for i,(hist_inc,hist_phi60) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
             inclusive_hists.append(hist_inc)
-            inclusive_hists[-1].Add( hist_phi60 )
+            #inclusive_hists[-1].Add( hist_phi60 )
             inclusive_hists_ratio.append( inclusive_hists[-1].Clone("inclusive_ratio_" + str(i) ) )
             inclusive_hists_ratio[-1].Divide(inclusive)
 
@@ -164,7 +186,8 @@ def main():
     print_ratio_plot(phi60,phi60_hists,phi60_hists_ratio,"phi60")
     print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phi60,"inclusive_to_phi60")
 
-    
+    print_numpy_plot( inclusive_hists, "numpy_inclusive")
+    print_numpy_plot( phi60_hists, "numpy_phi60")
 
 main()
     
