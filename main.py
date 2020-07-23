@@ -3,7 +3,7 @@ import sys
 sys.path.insert(1, './externals')
 import ROOT
 import numpy as np
-import mlrose_mod as mlrose
+import mlrose_mod as mlrose # Author: Genevieve Hayes https://github.com/gkhayes/mlrose/tree/master/mlrose
 import time
 import yaml
 import signal
