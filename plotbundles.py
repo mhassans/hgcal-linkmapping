@@ -136,14 +136,14 @@ def main():
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
 
         inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input0")
-        #inclusive.Add( inclusive_hists_input[1] )
+        inclusive.Add( inclusive_hists_input[1] )
         phi60 = inclusive_hists_input[1]
         inclusive.Scale(1./24)
         phi60.Scale(1./24)
 
         for i,(hist_inc,hist_phi60) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
             inclusive_hists.append(hist_inc)
-            #inclusive_hists[-1].Add( hist_phi60 )
+            inclusive_hists[-1].Add( hist_phi60 )
             inclusive_hists_ratio.append( inclusive_hists[-1].Clone("inclusive_ratio_" + str(i) ) )
             inclusive_hists_ratio[-1].Divide(inclusive)
 

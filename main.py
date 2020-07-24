@@ -163,12 +163,6 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     else:
         filenumber = "default"
     filename+=filenumber
-
-
-
-
-
-
     
     if ( algorithm == "save_root" ):
         #Save best combination so far into a root file
