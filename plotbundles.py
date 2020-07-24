@@ -5,7 +5,25 @@ import yaml
 import numpy as np
 from process import loadDataFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists
 from geometryCorrections import applyGeometryCorrections
+from root_numpy import hist2array
+import matplotlib.pyplot as pl
 
+def print_numpy_plot(hists,plotname):
+
+    inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
+
+    numpy_hists = []
+    for hist in hists:
+        numpy_hists.append( hist2array(hist) )
+    
+    for bundle in numpy_hists:
+        #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
+        pl.step((inclusive_hists[1])[:-1], bundle )
+
+    pl.ylim((0,1100000))
+    pl.savefig( plotname + ".png" )
+    pl.clf()
+    
 def print_ratio_plot(inclusive,individual,ratio,plotname):
     
     c1 = ROOT.TCanvas("c1","",800,600)
@@ -23,8 +41,9 @@ def print_ratio_plot(inclusive,individual,ratio,plotname):
     inclusive.SetLineColor(ROOT.kRed)
     inclusive.SetTitle(";r/z;Number of entries")
     inclusive.Draw("HIST")
+    #inclusive.Draw("E1")
     ROOT.gStyle.SetOptStat(0)
-    inclusive.SetMaximum(900E3)
+    inclusive.SetMaximum(1100E3)
     inclusive.GetYaxis().SetTitleOffset(1.9);
     inclusive.GetYaxis().SetTitleFont(43);
     inclusive.GetYaxis().SetLabelFont(43);
@@ -32,10 +51,12 @@ def print_ratio_plot(inclusive,individual,ratio,plotname):
     inclusive.GetYaxis().SetLabelSize(25);
     for hist in individual:
         hist.Draw("HISTsame")
+        #hist.Draw("E1same")
     p2.cd()
     for hist in ratio:
         hist.SetTitle(";r/z;Ratio to inclusive")
         hist.Draw("HISTsame")
+        #hist.Draw("E1same")
         hist.GetYaxis().SetRangeUser(-1,3);
         hist.GetYaxis().SetTitleOffset(0.5);
         hist.GetYaxis().CenterTitle();
@@ -78,10 +99,10 @@ def main():
         except EnvironmentError:
             print ("Please give valid config file")
             exit()
-        filein = config['input_file']
-        if filein.find(".root")!=-1:
+        filein_str = config['input_file']
+        if filein_str.find(".root")!=-1:
             useROOT = True
-        elif filein.find(".npy")!=-1:
+        elif filein_str.find(".npy")!=-1:
             useConfiguration = True
         else:
             print ("Please give input file in .npy or .root format")
@@ -95,14 +116,15 @@ def main():
 
     if useConfiguration:
         
-        init_state = np.hstack(np.load(filein,allow_pickle=True))
+        init_state = np.hstack(np.load(filein_str,allow_pickle=True))
         MappingFile = config['npy_configuration']['mappingFile']
         CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists'] 
 
         data = loadDataFile(MappingFile) #dataframe
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
-        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists)
+        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
+        #inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "fixed", fixvalue = 55)
         if 'corrections' in config.keys():
             if config['corrections'] != None:
                 print ( "Applying geometry corrections" )
@@ -142,8 +164,10 @@ def main():
         bundled_hists = None
 
     elif useROOT:
-        inclusive = filein.Get("ROverZ_Inclusive_1D")
-        phi60 = filein.Get("ROverZ_Phi60")
+        phi60 = filein.Get("ROverZ_PhiLess60")
+        inclusive = filein.Get("ROverZ_PhiGreater60")
+        ROOT.TH1.Add(inclusive,phi60)
+
         for i in range (24):
             inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
             phi60_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
@@ -153,7 +177,7 @@ def main():
             phi60_hists_ratio.append (  phi60_hists[-1].Clone ("phi60_ratio_" + str(i)  )  )
             inclusive_hists_ratio_to_phi60.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_phi60_" + str(i)  )  )
 
-            inclusive_hists_ratio[-1].Divide( inclusive  )            
+            inclusive_hists_ratio[-1].Divide( inclusive )            
             phi60_hists_ratio[-1].Divide( phi60  )
             inclusive_hists_ratio_to_phi60[-1].Divide( phi60  )            
 
@@ -162,7 +186,8 @@ def main():
     print_ratio_plot(phi60,phi60_hists,phi60_hists_ratio,"phi60")
     print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phi60,"inclusive_to_phi60")
 
-    
+    print_numpy_plot( inclusive_hists, "numpy_inclusive")
+    print_numpy_plot( phi60_hists, "numpy_phi60")
 
 main()
     

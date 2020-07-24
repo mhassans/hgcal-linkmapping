@@ -9,6 +9,7 @@ import itertools
 import random
 import sys
 from root_numpy import hist2array
+import ctypes
 
 np.set_printoptions(threshold=sys.maxsize)
 pd.set_option('display.max_rows', None)
@@ -86,13 +87,70 @@ def getModuleHists1D(HistFile):
             
     return inclusive_hists,module_hists
 
-def getModuleHists(HistFile):
 
+def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55 ):
+    #If split is a fixed value in each R/Z bin, the fixvalue can be set, otherwise it is ignored
+    #Fix value should be a multiple of 5/3 degrees, but if not is anyway forced to the closest multiple
+
+    PhiVsROverZ_profile = PhiVsROverZ.ProfileX()
+    
+    if ( split == "per_roverz_bin" ):
+        phi_divisions = np.empty(0)
+        for b in range(1, PhiVsROverZ_profile.GetNbinsX()+1):#begin from first bin
+            phi_divisions = np.append(phi_divisions,PhiVsROverZ_profile.GetBinContent(b))
+    elif ( split == "fixed" ):
+        phi_divisions = np.full(PhiVsROverZ_profile.GetNbinsX(), np.radians(fixvalue))
+
+    #The Zeroth element is the bin 1 low edge
+    edges = np.zeros(PhiVsROverZ.GetNbinsY()+1,dtype='double')
+    PhiVsROverZ.GetYaxis().GetLowEdge(edges) 
+
+    split_indices = []
+
+    for value in phi_divisions:
+        split_indices.append( (np.abs(edges - value)).argmin() + 1 )# +1 so that an element is converted into a ROOT bin number
+
+    return split_indices
+    
+def getModuleHists(HistFile, split = "fixed", fixvalue = 55):
+    #Split in phi is either 'fixed' (set at fixvalue in degrees)
+    #or 'per_roverz_bin' in which case the split will be taken
+    #at the mean point in phi in each R/Z bin (inclusive over all events) 
+    
     module_hists = []
     inclusive_hists = []
     
     infiles.append(ROOT.TFile.Open(HistFile,"READ"))
 
+    if not infiles[-1]:
+        raise EnvironmentError
+    
+    PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
+
+    nBinsPhi = PhiVsROverZ.GetNbinsY()    
+
+    #Get the phi indices where the split between "high" and "low phi should be
+    #Could either be constant with R/Z, or different for each R/Z bin 
+
+    #Gives the bin number, whose low edge is the splitting point
+    split_indices = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = fixvalue)
+    
+    projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60" )
+    projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" )
+    projectionX_PhiGreater60.Reset()
+    projectionX_PhiLess60.Reset()
+
+    #Get an independent projection for each R/Z bin
+    for x in range(1,PhiVsROverZ.GetNbinsX()+1):
+        error = ctypes.c_double(-1)
+        projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
+        projectionX_PhiGreater60.SetBinError(x,error.value)
+        projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
+        projectionX_PhiLess60.SetBinError(x,error.value)
+
+    inclusive_hists.append(projectionX_PhiGreater60)
+    inclusive_hists.append(projectionX_PhiLess60)
+    
     phiGreater60 = {}
     phiLess60 = {}
     
@@ -105,9 +163,22 @@ def getModuleHists(HistFile):
                 PhiVsROverZ = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
-                phiGreater60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )  
-                phiLess60[0,i,j,k] = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)                
 
+                projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60" )
+                projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60" )
+                projectionX_PhiGreater60.Reset()
+                projectionX_PhiLess60.Reset()
+
+                #Get an independent projection for each R/Z bin
+                for x in range(1,PhiVsROverZ.GetNbinsX()+1):
+                    error = ctypes.c_double(-1)
+                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
+                    projectionX_PhiGreater60.SetBinError(x,error.value)
+                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
+                    projectionX_PhiLess60.SetBinError(x,error.value)
+
+                phiGreater60[0,i,j,k] = projectionX_PhiGreater60
+                phiLess60[0,i,j,k] = projectionX_PhiLess60
 
     for i in range (5): #u
         for j in range (12): #v
@@ -115,15 +186,24 @@ def getModuleHists(HistFile):
                 PhiVsROverZ = infiles[-1].Get("ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
-                phiGreater60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi )
-                phiLess60[1,i,j,k] =  PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60", 1, nBinsPhi//2)
 
-    
-    PhiVsROverZ = infiles[-1].Get("ROverZ_Inclusive" )
-    nBinsPhi = PhiVsROverZ.GetNbinsY()
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60", nBinsPhi//2 + 1, nBinsPhi ) )
-    inclusive_hists.append(PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" , 1, nBinsPhi//2 ) )
-                
+                projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60" )
+                projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60" )
+                projectionX_PhiGreater60.Reset()
+                projectionX_PhiLess60.Reset()
+
+                #Get an independent projection for each R/Z bin
+                for x in range(1,PhiVsROverZ.GetNbinsX()+1):
+                    error = ctypes.c_double(-1)
+                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
+                    projectionX_PhiGreater60.SetBinError(x,error.value)
+                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
+                    projectionX_PhiLess60.SetBinError(x,error.value)
+                    
+                phiGreater60[1,i,j,k] = projectionX_PhiGreater60
+                phiLess60[1,i,j,k] = projectionX_PhiLess60
+
+
     module_hists.append(phiGreater60)
     module_hists.append(phiLess60)
             
@@ -240,12 +320,44 @@ def getHexModuleLoadInfo(data,data_tcs_passing,data_tcs_passing_scin,print_modul
 
     return module_loads_words,layers,u_list,v_list
 
-def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
+#Minimal custom implementation of root_numpy hist2array returning errors
+#See https://github.com/scikit-hep/root_numpy/blob/master/root_numpy/_hist.py
+# for original
+def TH1D2array(hist, include_overflow=False, return_error_squares=False):
+
+    # Determine dimensionality and shape
+    shape = (hist.GetNbinsX() + 2)
+    dtype = np.dtype('f8')
+    array = np.ndarray(shape=shape, dtype=dtype, buffer=hist.GetArray())
+    errors = np.ndarray(shape=shape, dtype=dtype)
+
+    for e in range (hist.GetNbinsX() + 1):
+        errors[e] = np.power(hist.GetBinError(e),2)
+    
+    if not include_overflow:
+        # Remove overflow and underflow bins
+        array = array[slice(1, -1)]
+        errors = errors[slice(1, -1)]
+
+    array = np.copy(array)
+    errors = np.copy(errors)
+
+    if return_error_squares:
+        array = np.column_stack((array,errors))
+
+    return array
+    
+
+def getMiniGroupHists(lpgbt_hists, minigroups_swap, root=False, return_error_squares=False):
     
     minigroup_hists = []
+    minigroup_hists_errors = []
 
     minigroup_hists_phiGreater60 = {}
     minigroup_hists_phiLess60 = {}
+
+    minigroup_hists_errors_phiGreater60 = {}
+    minigroup_hists_errors_phiLess60 = {}
 
     for minigroup, lpgbts in minigroups_swap.items():
         
@@ -256,10 +368,9 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
 
             phiGreater60.Add( lpgbt_hists[0][lpgbt] )
             phiLess60.Add( lpgbt_hists[1][lpgbt] )
-
             
-        phiGreater60_array = hist2array(phiGreater60)
-        phiLess60_array = hist2array(phiLess60) 
+        phiGreater60_array = TH1D2array(phiGreater60,return_error_squares=return_error_squares)
+        phiLess60_array = TH1D2array(phiLess60,return_error_squares=return_error_squares) 
 
         if ( root ):
             minigroup_hists_phiGreater60[minigroup] = phiGreater60
@@ -272,7 +383,7 @@ def getMiniGroupHists(lpgbt_hists, minigroups_swap,root=False):
     minigroup_hists.append(minigroup_hists_phiLess60)
 
     return minigroup_hists
-
+    
 def getlpGBTHists(data, module_hists):
 
     lpgbt_hists = []
@@ -310,7 +421,7 @@ def getlpGBTHists(data, module_hists):
     
     return lpgbt_hists
 
-def getMinilpGBTGroups(data, minigroup_type):
+def getMinilpGBTGroups(data, minigroup_type="minimal"):
 
     minigroups = {}
     counter = 0
@@ -392,7 +503,8 @@ def find_nearest(array, values):
     return indices
 
 def getBundles(minigroups_swap,combination):
-
+    #Reimplemented in externals/mlrose_mod/opt_probs.py
+    
     #Need to divide the minigroups into 24 groups taking into account their different size
     nBundles = 24
     #The weights are the numbers of lpgbts in each mini-groups
@@ -440,7 +552,12 @@ def getBundledlpgbtHistsRoot(minigroup_hists,bundles):
 
 def getBundledlpgbtHists(minigroup_hists,bundles):
 
-    bundled_lpgbthists = []
+    use_error_squares = False
+    #Check if the minigroup_hists were produced
+    #with additional squared error information    
+    if ( minigroup_hists[0][0].ndim == 2 ):
+        use_error_squares = True
+        
     bundled_lpgbthists_list = []
 
     for p,phiselection in enumerate(minigroup_hists):
@@ -450,8 +567,11 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
         for i in range(len(bundles)):#loop over bundles
 
             #Create one lpgbt histogram per bundle
-            lpgbt_hist_list = np.zeros(42) 
-            
+            if not use_error_squares:
+                lpgbt_hist_list = np.zeros(42)
+            else:
+                lpgbt_hist_list = np.zeros((42,2))
+
             for minigroup in bundles[i]:#loop over each lpgbt in the bundle
                 lpgbt_hist_list+= phiselection[minigroup] 
 
@@ -462,8 +582,14 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
     return bundled_lpgbthists_list
 
 
-
 def calculateChiSquared(inclusive,grouped):
+
+    use_error_squares = False
+    #Check if the minigroup_hists were produced
+    #with additional squared error information    
+
+    if ( grouped[0][0].ndim == 2 ):
+        use_error_squares = True
 
     chi2_total = 0
     
@@ -472,9 +598,18 @@ def calculateChiSquared(inclusive,grouped):
         for key,hist in grouped[i].items():
 
             for b in range(len(hist)):
-                
-                squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )   
 
-                chi2_total+=squared_diff
+                if not use_error_squares:
+                    squared_diff = np.power(hist[b]-inclusive[i].GetBinContent(b+1)/24, 2 )
+                    chi2_total+=squared_diff
+                else:
+                    squared_diff = np.power(hist[b][0]-inclusive[i].GetBinContent(b+1)/24, 2 )
+                    squared_error = hist[b][1]
+
+                    if ( squared_error == 0 ):
+                        squared_error = inclusive[i].GetBinError(b+1)/24
+
+                    if ( squared_error != 0 ):
+                        chi2_total+=(squared_diff/squared_error)
 
     return chi2_total

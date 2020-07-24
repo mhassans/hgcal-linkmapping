@@ -31,6 +31,7 @@ def applyNTCCorrection( module_hists, modulesToCorrect, useNumpy = False ):
                 correction = row['nTCsRatio']
                 if useNumpy:
                     hist = hist * correction
+                    module_hists[i][dictLabel] = hist
                 else:
                     originalIntegral = hist.Integral()
                     hist.Scale( correction )
