@@ -19,7 +19,7 @@ Then each time you start a new session run: `source start_mapping_env.sh`
 
 Main file containing the option to run all functions:
 - `plot_lpGBTLoads`, `plot_ModuleLoads`, : Processes MC event data and determines the average number of TCs, or words, per lpGBT
-- `study_mapping`, :  Find the optimised way of assigning lpGBTs to bundles 
+- `study_mapping`, :  Find the optimised way of assigning lpGBTs to bundles, where the input options are listed for each parameter
 
 Run using the config file `config/default.yaml`
 
@@ -40,3 +40,8 @@ Python and C++ implementations of the mapping between 120 degree HGCal sectors i
 Takes as input a choice of lpgbt bundles, and bins the trigger cell data event by event
 There are several plotting scripts that investigate the impact of truncation on the number of trigger cells.
 Run using the config file `config/fluctuation.yaml`
+
+## `plotbundles.py`
+
+Various plotting functions, mainly to plot the 24 R/Z histograms for each bundle, and take the ratio to the inclusive distribution over 24.
+Run using the config file `config/plotbundles.yaml`
