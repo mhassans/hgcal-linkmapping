@@ -2,7 +2,8 @@ function:
   study_mapping: False
   check_for_missing_modules: True
   plot_lpGBTLoads: False
-  plot_ModuleLoads: False               
+  plot_ModuleLoads: False
+  produce_AllocationFile: False               
 
 print_level: 0
 output_dir: .
@@ -53,3 +54,8 @@ plot_ModuleLoads:
   MappingFile: data/FeMappingV7.txt
   CMSSW_Silicon: "data/average_tcs_sil_v11_relval_ttbar_20200611.csv"
   CMSSW_Scintillator: "data/average_tcs_scin_v11_relval_ttbar_20200611.csv"
+
+produce_AllocationFile:
+  MappingFile: data/FeMappingV7.txt
+  allocation: bundles_job_7058.npy
+  minigroup_type: 'minimal'

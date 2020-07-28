@@ -52,6 +52,44 @@ def plot_ModuleLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
     plot2D(lpgbt_loads_tcs,lpgbt_layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
     plot2D(lpgbt_loads_words,lpgbt_layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
 
+def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
+
+    #Load mapping file
+    data = loadDataFile(MappingFile) 
+
+    #List of which minigroups are assigned to each bundle 
+    configuration = np.hstack(np.load(allocation,allow_pickle=True))
+
+    #Get minigroups
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+    
+    #Bundle together minigroup configuration
+    bundles = getBundles(minigroups_swap,configuration)
+
+    #Open output file
+    fileout = open('allocation.txt', 'w')
+    fileout.write( '(lpGBT_number) (number_modules) (sil=0scin=1) (layer) (u/eta) (v/phi) (number_elinks)\n' )
+    for b,bundle in enumerate(bundles):
+        fileout.write(str(b) + "\n")
+        for minigroup in bundle:
+
+            #list lpgbts in minigroup:
+            for lpgbt in minigroups_swap[minigroup]:
+
+                fileout.write(str(lpgbt) + " ")
+                
+                #Get modules associated to each lpgbt:
+                data_list = data[ ((data['TPGId1']==lpgbt) | (data['TPGId2']==lpgbt)) ]
+                fileout.write(str(len(data_list)) + " ")
+                for index, row in data_list.iterrows():
+                    if ( row['density']==2 ):
+                        fileout.write(str(1) + " " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']))
+                    else:
+                        fileout.write(str(0) + " " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']))
+                fileout.write("\n")
+                
+    fileout.close()
+    
 def check_for_missing_modules_inMappingFile(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
     #Check for modules missing in the mapping file
@@ -267,6 +305,14 @@ def main():
     if ( config['function']['plot_ModuleLoads'] ):
         subconfig = config['plot_ModuleLoads']
         plot_ModuleLoads(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
+
+    if ( config['function']['plot_ModuleLoads'] ):
+        subconfig = config['plot_ModuleLoads']
+        plot_ModuleLoads(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
+
+    if ( config['function']['produce_AllocationFile'] ):
+        subconfig = config['produce_AllocationFile']
+        produce_AllocationFile(subconfig['MappingFile'],subconfig['allocation'],minigroup_type=subconfig['minigroup_type'])
 
     
 main()
