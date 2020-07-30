@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as pl
 import math
 import pickle
+from scipy import optimize
 from process import loadDataFile
 from process import getPhiSplitIndices
 from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
@@ -337,7 +338,40 @@ def plotMeanMax(eventData, outdir = ".", includePhi60 = True):
     pl.savefig( outdir + "/maxima.png" )
     pl.clf()
 
+def sumMaximumOverAllEventsAndBundles(truncation,data):
+    #Solve for the truncation factor, given two datasets, A and B (data[0] and data[1])
+    #And the maximum number of trigger cells allowed in each dataset (data[2] and data[3] respectively)
+    #The truncation parameter must be less than or equal to 1
+    maximum_A = np.amax(data[0]/6,axis=(1,0))
 
+    #Use ceiling rather than round to get worst case
+    overallsum_A = np.sum(np.ceil(np.amax(np.where(data[0]/6<truncation*maximum_A,data[0]/6,np.where(truncation<1.,truncation*maximum_A,maximum_A)),axis=(1,0))))
+    overallsum_B = np.sum(np.ceil(np.amax(np.where(data[1]/6<truncation*(maximum_A/2),data[1]/6,np.where(truncation<1.,truncation*maximum_A/2.,maximum_A/2.)),axis=(1,0))))
+
+    valA = data[2] - overallsum_A
+    valB = data[3] - overallsum_B
+
+    #Give a preference that the sum is less than the maximum allowed
+    if ( valA < 0 ):
+         valA = valA * -1.5
+    if ( valB < 0 ):
+         valB = valB * -1.5
+
+    optval = valA + valB
+    return optval
+
+def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
+    #Get an array of size nROverZbins, which indicates the maximum number of TCs allowed in each RoverZ bin (the values for data_B are exactly half) (still to consider odd values)
+    
+    #'scalar' is the value by which the maximum (of data_A) is multiplied to get the truncation values
+    result = optimize.minimize_scalar(sumMaximumOverAllEventsAndBundles,args=[data_A, data_B, maxtcs_A, maxtcs_B],bounds=(0.5,2.0),method='bounded')
+    scalar = result.x
+
+    print ("scalar = ", scalar )
+    truncationValues = np.ceil(np.amax(data_A/6,axis=(1,0)) * scalar)
+
+    return truncationValues
+    
 def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #Load pickled per-event bundle histograms
     with open(eventData, "rb") as filep:   
@@ -379,6 +413,47 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #Find the maximum per bin over all events,
     #Then find the 99th percentile for a 1% truncation
 
+
+
+
+
+    
+    truncation_option_1 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,200)
+    truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
+    truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
+
+    print ( truncation_option_1, np.sum(truncation_option_1) )
+    print ( truncation_option_2, np.sum(truncation_option_2) )
+    print ( truncation_option_3, np.sum(truncation_option_3) )
+
+    #Once we have the truncation values, need to find how many TCs are lost
+
+
+    truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_1,inclusive_bundled_lpgbthists_allevents/6,truncation_option_1)),axis=(0,1))
+    truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_1/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_1/2)),axis=(0,1))
+    totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6),axis=(0,1) )
+    totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6),axis=(0,1) )
+
+    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
+    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
+
+    truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_2,inclusive_bundled_lpgbthists_allevents/6,truncation_option_2)),axis=(0,1))
+    truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_2/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_2/2)),axis=(0,1))
+    # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
+    # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
+
+
+    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
+    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
+    
+    truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_3,inclusive_bundled_lpgbthists_allevents/6,truncation_option_3)),axis=(0,1))
+    truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_3/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_3/2)),axis=(0,1))
+    # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
+    # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
+    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
+    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
+    
+    
     overall_max = np.amax(hists_max, axis=0)    
     
     overall_max99p = np.round(np.percentile(hists_max,99,axis=0))

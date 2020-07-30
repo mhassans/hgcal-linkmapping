@@ -67,7 +67,7 @@ def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
     bundles = getBundles(minigroups_swap,configuration)
 
     #Open output file
-    fileout = open('allocation.txt', 'w')
+    fileout = open('allocation_20200729_1.txt', 'w')
     fileout.write( '(lpGBT_number) (number_modules) (sil=0scin=1) (layer) (u/eta) (v/phi) (number_elinks)\n' )
     for b,bundle in enumerate(bundles):
         fileout.write(str(b) + "\n")
@@ -75,7 +75,6 @@ def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
 
             #list lpgbts in minigroup:
             for lpgbt in minigroups_swap[minigroup]:
-
                 fileout.write(str(lpgbt) + " ")
                 
                 #Get modules associated to each lpgbt:
@@ -83,9 +82,9 @@ def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
                 fileout.write(str(len(data_list)) + " ")
                 for index, row in data_list.iterrows():
                     if ( row['density']==2 ):
-                        fileout.write(str(1) + " " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']))
+                        fileout.write("1 " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']) + " " )
                     else:
-                        fileout.write(str(0) + " " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']))
+                        fileout.write("0 " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']) + " " )
                 fileout.write("\n")
                 
     fileout.close()
