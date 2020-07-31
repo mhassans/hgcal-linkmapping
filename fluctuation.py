@@ -3,6 +3,7 @@ import ROOT
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as pl
+from matplotlib.colors import LogNorm
 import math
 import pickle
 from scipy import optimize
@@ -169,21 +170,27 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             phi_split = np.zeros( nROverZBins )
             for i,idx in enumerate(split_indices):
                 phi_split[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idx))
+                
+    for z in (-1,1):
+        for sector in (0,1,2):
+            key1 = (z,sector)
+            ROverZ_per_module_PhiGreater60[key1] = {}
+            ROverZ_per_module_PhiLess60[key1] = {}
 
-    for i in range (15):
-        for j in range (15):
-            for k in range (1,53):
-                if  k < 28 and k%2 == 0:
-                    continue
-                ROverZ_per_module_PhiGreater60[0,i,j,k] = np.empty(0)
-                ROverZ_per_module_PhiLess60[0,i,j,k] = np.empty(0)
+            for i in range (15):
+                for j in range (15):
+                    for k in range (1,53):
+                        if  k < 28 and k%2 == 0:
+                            continue
+                        ROverZ_per_module_PhiGreater60[key1][0,i,j,k] = np.empty(0)
+                        ROverZ_per_module_PhiLess60[key1][0,i,j,k] = np.empty(0)
 
-    for i in range (5):
-        for j in range (12):
-            for k in range (37,53):
-                ROverZ_per_module_PhiGreater60[1,i,j,k] = np.empty(0)
-                ROverZ_per_module_PhiLess60[1,i,j,k] = np.empty(0)
-
+            for i in range (5):
+                for j in range (12):
+                    for k in range (37,53):
+                        ROverZ_per_module_PhiGreater60[key1][1,i,j,k] = np.empty(0)
+                        ROverZ_per_module_PhiLess60[key1][1,i,j,k] = np.empty(0)
+    
     try:
         for entry,event in enumerate(tree):
 
@@ -199,10 +206,21 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             # if entry > 10:
             #     break
             print ("Event number " + str(entry))
-            
-            for key in ROverZ_per_module_PhiGreater60.keys():
-                ROverZ_per_module_PhiGreater60[key] = np.empty(0)
-                ROverZ_per_module_PhiLess60[key] = np.empty(0)
+
+
+            for key1 in ROverZ_per_module_PhiGreater60.keys():
+                for key2 in ROverZ_per_module_PhiGreater60[key1].keys():
+                    ROverZ_per_module_PhiGreater60[key1][key2] = np.empty(0)
+                    ROverZ_per_module_PhiLess60[key1][key2] = np.empty(0)
+        
+            # for outer in ROverZ_per_module_PhiGreater60.values():
+            #     for inner in outer.values:
+            #         inner = np.empty(0)
+            # for outer in ROverZ_per_module_PhiLess60.values():
+            #     for inner in outer.values:
+            #         inner = np.empty(0)
+            # ROverZ_per_module_PhiGreater60[key] = np.empty(0)
+            # ROverZ_per_module_PhiLess60[key] = np.empty(0)
                 
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
@@ -217,9 +235,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
                     if (roverz_phi[1] >= phi_split[roverz_bin-1]):
                         #There should be no r/z values lower than 0.076
-                        ROverZ_per_module_PhiGreater60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiGreater60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
+                        ROverZ_per_module_PhiGreater60[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiGreater60[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
                     elif (roverz_phi[1] < phi_split[roverz_bin-1]):
-                        ROverZ_per_module_PhiLess60[0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiLess60[0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+                        ROverZ_per_module_PhiLess60[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiLess60[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         
                 else: #Scintillator  
                     eta = cellu
@@ -229,33 +247,45 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
                     
                     if (roverz_phi[1] >= phi_split[roverz_bin-1]):
-                        ROverZ_per_module_PhiGreater60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiGreater60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
+                        ROverZ_per_module_PhiGreater60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiGreater60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
                     elif (roverz_phi[1] < phi_split[roverz_bin-1]):
-                        ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiLess60[1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
+                        ROverZ_per_module_PhiLess60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiLess60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
             #Bin the TC module data
             module_hists_phigreater60 = {}
             module_hists_philess60 = {}
 
-            for key,value in ROverZ_per_module_PhiGreater60.items():
-                module_hists_phigreater60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
-            for key,value in ROverZ_per_module_PhiLess60.items():
-                module_hists_philess60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
-            
-            #the module hists are a numpy array of size 42
-            module_hists = [module_hists_phigreater60,module_hists_philess60]
+            for key1,value1 in ROverZ_per_module_PhiGreater60.items():
+                module_hists_phigreater60[key1] = {}
+                for key2,value2 in value1.items():
+                    module_hists_phigreater60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
 
-            #Apply geometry corrections
-            applyGeometryCorrectionsNumpy( module_hists, modulesToCorrect )
+            for key1,value1 in ROverZ_per_module_PhiLess60.items():
+                module_hists_philess60[key1] = {}
+                for key2,value2 in value1.items():
+                    module_hists_philess60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
 
-            #Sum the individual module histograms to get the minigroup histograms
-            minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
+            # for key,value in ROverZ_per_module_PhiLess60.items():
+            #     module_hists_philess60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
 
-            #Sum the minigroup histograms to get the bundle histograms
-            bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
-            bundled_lpgbthists_allevents.append(bundled_lpgbthists)
+            for z in (-1,1):
+                for sector in (0,1,2):
+                        
+                    #the module hists are a numpy array of size 42
+                    module_hists = [module_hists_phigreater60[z,sector],module_hists_philess60[z,sector]]
+
+                    #Apply geometry corrections
+                    applyGeometryCorrectionsNumpy( module_hists, modulesToCorrect )
+
+                    #Sum the individual module histograms to get the minigroup histograms
+                    minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
+
+                    #Sum the minigroup histograms to get the bundle histograms
+                    bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
+
+                    bundled_lpgbthists_allevents.append(bundled_lpgbthists)
 
     except KeyboardInterrupt:
         print("interrupt received, stopping and saving")
@@ -419,39 +449,63 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
 
     
     truncation_option_1 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,200)
-    truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
-    truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
+    # truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
+    # truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
 
-    print ( truncation_option_1, np.sum(truncation_option_1) )
-    print ( truncation_option_2, np.sum(truncation_option_2) )
-    print ( truncation_option_3, np.sum(truncation_option_3) )
+    # print ( truncation_option_1, np.sum(truncation_option_1) )
+    # print ( truncation_option_2, np.sum(truncation_option_2) )
+    # print ( truncation_option_3, np.sum(truncation_option_3) )
 
     #Once we have the truncation values, need to find how many TCs are lost
 
 
-    truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_1,inclusive_bundled_lpgbthists_allevents/6,truncation_option_1)),axis=(0,1))
-    truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_1/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_1/2)),axis=(0,1))
-    totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6),axis=(0,1) )
-    totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6),axis=(0,1) )
-
-    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-    truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_2,inclusive_bundled_lpgbthists_allevents/6,truncation_option_2)),axis=(0,1))
-    truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_2/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_2/2)),axis=(0,1))
-    # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
-    # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
+    pl.clf()
 
 
-    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
     
-    truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_3,inclusive_bundled_lpgbthists_allevents/6,truncation_option_3)),axis=(0,1))
-    truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_3/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_3/2)),axis=(0,1))
-    # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
-    # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
-    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
+    data = np.max(philess60_bundled_lpgbthists_allevents,axis=1)/(6)
+
+    print (np.amax(data,axis=0))
+    
+    data0 = data[:,0]
+    axis = np.full(len(data), 0)
+
+    for c in range (1,42):
+        data0 = np.append(data0,data[:,c])
+        axis = np.append( axis, np.full(len(data), c))
+
+    #print ((data)/(24*6))
+    pl.hist2d( axis , data0 , bins = [np.arange(-0.5,42.5,1),np.arange(0,30,1)],norm=LogNorm())
+
+    #    pl.pcolormesh(np.sum(inclusive_bundled_lpgbthists_allevents,axis=(1))/24)
+    pl.colorbar()
+    pl.step(np.arange(-0.5,42.5,1),np.insert( truncation_option_1/2. ,0,0),color='red',linewidth='3')
+    pl.savefig( "test.png" )
+    
+
+    # truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_1,inclusive_bundled_lpgbthists_allevents/6,truncation_option_1)),axis=(0,1))
+    # truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_1/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_1/2)),axis=(0,1))
+    # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6),axis=(0,1) )
+    # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6),axis=(0,1) )
+
+    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
+    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
+
+    # truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_2,inclusive_bundled_lpgbthists_allevents/6,truncation_option_2)),axis=(0,1))
+    # truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_2/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_2/2)),axis=(0,1))
+    # # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
+    # # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
+
+
+    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
+    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
+    
+    # truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_3,inclusive_bundled_lpgbthists_allevents/6,truncation_option_3)),axis=(0,1))
+    # truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_3/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_3/2)),axis=(0,1))
+    # # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
+    # # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
+    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
+    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
     
     
     overall_max = np.amax(hists_max, axis=0)    
