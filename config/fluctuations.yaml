@@ -2,7 +2,8 @@ function:
   checkFluctuations: False
   plot_MeanMax: True
   plot_Truncation: True
-
+  studyTruncationOptions: False
+  
 print_level: 0
 output_dir: .
 
@@ -29,5 +30,9 @@ plot_MeanMax:
   includePhi60: True
   
 plot_Truncation:
+  eventData: data/alldata_neutrino_gun_2006022.txt
+  includePhi60: True
+
+studyTruncationOptions:
   eventData: data/alldata_neutrino_gun_2006022.txt
   includePhi60: True
