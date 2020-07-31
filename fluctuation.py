@@ -432,29 +432,28 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     return truncation_floor
 
 def loadFluctuationData(eventData):
-
-    print ("Loading Data")
+    #Load the per-event flucation data produced using 'checkFluctuations'
+    #Return two arrays (for regions A and B) containing for each event and
+    #bundle, the number of TCs in each R/Z bin
+    
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
     
     #Names for phi > 60 and phi < 60 indices
-    phigreater60 = 0
-    philess60 = 1
+    dataA = 0
+    dataB = 1
 
     nbundles = len(bundled_lpgbthists_allevents[0][0]) #24
     nbins = len(bundled_lpgbthists_allevents[0][0][0]) #42
-
-    #Loop over all events to get the maximum per bin over bundles (per event)
-    phigreater60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    philess60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    print ("Getting per event info", str(len(bundled_lpgbthists_allevents)) + " events"  )
+    
+    dataA_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    dataB_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
 
     for e,event in enumerate(bundled_lpgbthists_allevents):        
-        phigreater60_bundled_lpgbthists_allevents[e] = np.array(list(event[phigreater60].values()))
-        philess60_bundled_lpgbthists_allevents[e] = np.array(list(event[philess60].values()))
+        dataA_bundled_lpgbthists_allevents[e] = np.array(list(event[dataA].values()))
+        dataB_bundled_lpgbthists_allevents[e] = np.array(list(event[dataB].values()))
 
-    print ("Finished getting per event info")
-    return phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents
+    return dataA_bundled_lpgbthists_allevents,dataB_bundled_lpgbthists_allevents
     
 def studyTruncationOptions(eventData, outdir = ".", includePhi60 = True):
     
@@ -627,36 +626,14 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #Load pickled per-event bundle histograms
     phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents = loadFluctuationData(eventData)
 
-    # with open(eventData, "rb") as filep:   
-    #     bundled_lpgbthists_allevents = pickle.load(filep)
-    # os.system("mkdir -p " + outdir)
-
-    #nbins = 42
-    #nbundles = 24
-    
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
 
-    #Names for phi > 60 and phi < 60 indices
-    phigreater60 = 0
-    philess60 = 1
-    
-    # #Loop over all events to get the maximum per bin over bundles (per event)
-    
-    # phigreater60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    # philess60_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    # print ("Getting per event info", str(len(bundled_lpgbthists_allevents)) + " events"  )
-
-    # for e,event in enumerate(bundled_lpgbthists_allevents):        
-    #     phigreater60_bundled_lpgbthists_allevents[e] = np.array(list(event[phigreater60].values()))
-    #     philess60_bundled_lpgbthists_allevents[e] = np.array(list(event[philess60].values()))
-    # print ("Finished getting per event info")
     #Form the intersection of the inclusive and phi60 arrays,
     #taking for each bin the maximum of the inclusive and phi60 x 2
     inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
     maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents*2)
     #maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phigreater60_bundled_lpgbthists_allevents*2)
-
     
     if ( includePhi60 ):
         hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
@@ -684,11 +661,8 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     max_per_event_perbin90 = []
     max_per_event_perbin95 = []
     
-    ##    for eventphigreater60,eventless60 in bundled_lpgbthists_allevents:
     for bundle_hists_phigreater60,bundle_hists_philess60 in zip(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents):
 
-        # bundle_hists_phigreater60 = np.array(list(event[phigreater60].values()))
-        # bundle_hists_philess60 = np.array(list(event[philess60].values()))
         bundle_hists_inclusive = bundle_hists_philess60 + bundle_hists_phigreater60
         bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_philess60*2)
         #bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phigreater60*2)
