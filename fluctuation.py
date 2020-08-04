@@ -212,16 +212,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 for key2 in ROverZ_per_module_PhiGreater60[key1].keys():
                     ROverZ_per_module_PhiGreater60[key1][key2] = np.empty(0)
                     ROverZ_per_module_PhiLess60[key1][key2] = np.empty(0)
-        
-            # for outer in ROverZ_per_module_PhiGreater60.values():
-            #     for inner in outer.values:
-            #         inner = np.empty(0)
-            # for outer in ROverZ_per_module_PhiLess60.values():
-            #     for inner in outer.values:
-            #         inner = np.empty(0)
-            # ROverZ_per_module_PhiGreater60[key] = np.empty(0)
-            # ROverZ_per_module_PhiLess60[key] = np.empty(0)
-                
+                        
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
             #(inclusively and for phi < 60)
@@ -265,9 +256,6 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 module_hists_philess60[key1] = {}
                 for key2,value2 in value1.items():
                     module_hists_philess60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
-
-            # for key,value in ROverZ_per_module_PhiLess60.items():
-            #     module_hists_philess60[key] = np.histogram( value, bins = nROverZBins, range = (0.076,0.58) )[0]
 
 
             for z in (-1,1):
@@ -375,27 +363,17 @@ def sumMaximumOverAllEventsAndBundles(truncation,data):
     maximum_A = np.amax(data[0],axis=(1,0))
     maximum_B = np.amax(data[1],axis=(1,0))
 
-    #print (maximum_A )
-
     Bscaling_factor = data[2]/data[3]
     
     maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
     
     #Use ceiling rather than round to get worst case
-    # overallsum_A = np.sum(np.ceil(np.amax(np.where(data[0]/6<truncation*maxAB,data[0]/6,np.where(truncation<1.,truncation*maxAB,maxAB)),axis=(1,0))))
-    # overallsum_B = np.sum(np.ceil(np.amax(np.where(data[1]/6<truncation*(maxAB/2),data[1]/6,np.where(truncation<1.,truncation*maxAB/2.,maxAB/2.)),axis=(1,0))))
-    # overallsum_A = np.sum(np.ceil(np.amax(np.where(data[0]<truncation*maxAB,data[0],np.where(truncation*maxAB<maximum_A,truncation*maxAB,maximum_A)),axis=(1,0))))
-    # overallsum_B = np.sum(np.ceil(np.amax(np.where(data[1]<truncation*(maxAB/Bscaling_factor),data[1],np.where(truncation*(maxAB/Bscaling_factor)<maximum_B,truncation*maxAB/Bscaling_factor,maximum_B)),axis=(1,0))))
-
-
     overallsum_A = np.sum(np.amax(np.where(data[0]<truncation*maxAB,data[0],np.where(truncation*maxAB<maximum_A,truncation*maxAB,maximum_A)),axis=(1,0)))
     overallsum_B = np.sum(np.amax(np.where(data[1]<truncation*(maxAB/Bscaling_factor),data[1],np.where(truncation*(maxAB/Bscaling_factor)<maximum_B,truncation*maxAB/Bscaling_factor,maximum_B)),axis=(1,0)))
 
-    #print (overallsum_A, overallsum_B, truncation)
-
     valA = data[2] - overallsum_A
     valB = data[3] - overallsum_B
-    print (valA, valB, truncation)
+
     #Give a preference that the sum is less than the maximum allowed
     if ( valA < 0 ):
          valA = valA * -1.5
@@ -403,32 +381,95 @@ def sumMaximumOverAllEventsAndBundles(truncation,data):
          valB = valB * -1.5
 
     optval = valA + valB
-    print ("optval" , optval)
     return optval
 
+def plot_NTCs_Vs_ROverZ(inputdata,axis,savename,truncation_curves=None,scaling=None):
+
+    #Fill a 2D histogram per bunch-crossing with N_TCs (maximum over bundles) 
+
+    #Each row represents the r/z bins in a bundle, there are n_bundles*n_events rows
+    data = inputdata.reshape(-1,inputdata.shape[-1])
+
+    #Swap axes, such that each row represents an r/z bin, there are n_roverz_bins rows (later flattened)
+    data_swap = np.swapaxes(data,0,1)
+
+    #Get the r/z bin axis indices, n_bundles*n_events*[0]+n_bundles*n_events*[1]+...n_bundles*n_events*[n_roverz_bins]
+    axis_indices = np.where(data_swap==data_swap)[0]
+    #Then get the roverz bin values corresponding to the indices
+    roverz = np.take(axis,axis_indices)
+
+    #Plot the 2D histogram
+    pl.clf()
+    pl.hist2d( roverz , data_swap.flatten() , bins = (len(axis)-1,50),range=[[0.076,0.58], [0, 50]],norm=LogNorm())
+    pl.colorbar().set_label("Number of Events")
+    #Plot the various 1D truncation curves
+    colours = ['red','orange','cyan','green','teal','darkviolet']
+
+    if ( truncation_curves is not None ):
+        for t,truncation_option in enumerate(truncation_curves):
+            scale = 1.
+            if (scaling is not None):
+                scale=scaling[t]
+            pl.step(axis,np.append(truncation_option,truncation_option[-1])/scale , where = 'post' , color=colours[t],linewidth='3')
+            
+    pl.xlabel('r/z')
+    pl.ylabel('Number of TCs')
+    pl.savefig( savename + ".png" )
+    pl.clf()
+
+def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, savename ):
+
+    #Sum over all events and bundles of TCs (in each R/Z bin) 
+    totalsumA = np.sum( dataA , axis=(0,1) )
+    totalsumB = np.sum( dataB , axis=(0,1) )
+
+    #Sum over all events and bundles of truncated TCs (in each R/Z bin) 
+    truncatedsum_A = np.sum(np.where(dataA<truncation_curve, dataA, truncation_curve),axis=(0,1))
+    truncatedsum_B = np.sum(np.where(dataB<truncation_curve/TCratio, dataB, truncation_curve/TCratio),axis=(0,1))
+
+    # print ( truncatedsum_A )
+    # print ( np.sum((np.where(dataA<truncation_curve, dataA, truncation_curve)),axis=(0,1)) )
+
+    #truncatedsum_B = np.sum(np.floor(np.where(dataB<truncation_curve/TCratio, dataB, truncation_curve/TCratio)),axis=(0,1))
+
+    #Divide to get the fraction, taking into account division by zero
+    ratioA = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A), where=totalsumA!=0 )
+    ratioB = np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B), where=totalsumB!=0 )
+
+    pl.clf()
+    pl.step(axis,np.append( ratioA , ratioA[-1] ),color='red',linewidth='1', where = 'post', label='data A')
+    pl.step(axis,np.append( ratioB , ratioB[-1] ),color='orange',linewidth='1', where = 'post', label='data B')
+    pl.xlabel('r/z')
+    pl.ylabel('Sum truncated TCs / Sum all TCs')
+    pl.ylim((0.8,1.05))
+    pl.legend()
+    pl.savefig( savename + ".png" )
+    pl.clf()
+
+    
+    
 def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     #Get an array of size nROverZbins, which indicates the maximum number of TCs allowed in each RoverZ bin (the values for data_B are exactly half) (still to consider odd values)
     
-    #'scalar' is the value by which the maximum (of data_A) is multiplied to get the truncation values
+    #'scalar' is the value by which the maximum (of data_A or data_B x TCratio) is multiplied to get the truncation values
     result = optimize.minimize_scalar(sumMaximumOverAllEventsAndBundles,args=[data_A, data_B, maxtcs_A, maxtcs_B],bounds=(0.01,2.0),method='bounded')
     scalar = result.x
 
-    print ("scalar = ", scalar )
     maximum_A = np.amax(data_A,axis=(1,0))
     maximum_B = np.amax(data_B,axis=(1,0))
-    
+
+
+    #Find the floating-point truncation values and round down to make these integers.
+    #This will be less than the allowed total due to rounding down.
     truncation_float = np.maximum(maximum_A,maximum_B*(maxtcs_A/maxtcs_B)) * scalar
     truncation_floor = np.floor(truncation_float)
+    #The integer difference from the allowed total gives the number of bins that should have their limit incremented by 1.
     integer_difference = np.floor(np.sum(truncation_float)-np.sum(truncation_floor))
+    #Find the N bins which have the biggest difference between the floating-point truncation values and the rounded integer
+    #and add 1 to these. This gives limits for A, and for B (divided by TC ratio)
     arg = np.argsort(truncation_floor-truncation_float)[:int(integer_difference)]
     truncation_floor[arg]+=1
-    # print (truncation_float - truncation_floor)
-    # print (arg)
-    
-    #truncationValues = np.amax(data_B,axis=(1,0)) * scalar
-    #truncationValues = np.amax(data_B,axis=(1,0)) * scalar
 
-    #return truncationValues
     return truncation_floor
 
 def loadFluctuationData(eventData):
@@ -462,164 +503,32 @@ def studyTruncationOptions(eventData, outdir = ".", includePhi60 = True):
 
     os.system("mkdir -p " + outdir)
 
-    #nbins = 42
-    #nbundles = 24
-
+    nbinsROverZ = len(phigreater60_bundled_lpgbthists_allevents[0][0]) #42
+    
     #To get binning for r/z histograms
-    inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
+    inclusive_hists = np.histogram( np.empty(0), bins = nbinsROverZ, range = (0.076,0.58) )
 
     #taking for each bin the maximum of the inclusive and phi60 x 2
     inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
 
-    print ("Start to get truncation values")
+    print ("Get truncation value for option 1")
     truncation_option_1 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,200)
+    print ("Get truncation value for option 2")
     truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
+    print ("Get truncation value for option 3")
     truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
-    print ("truncation options 1,2,3:")
-    print ( truncation_option_1, np.sum(truncation_option_1) )
-    print ( truncation_option_2, np.sum(truncation_option_2) )
-    print ( truncation_option_3, np.sum(truncation_option_3) )
 
     #Once we have the truncation values, need to find how many TCs are lost
+    print ("Plotting histograms")
+    #Fill a 2D histogram per bunch-crossing with N_TCs (maximum over bundles) 
+    plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],"NTCs_Vs_ROverZ_A",[truncation_option_1,truncation_option_2,truncation_option_3])
+    plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],"NTCs_Vs_ROverZ_B",[truncation_option_1,truncation_option_2,truncation_option_3],[2,400/302,2])
 
-
-    pl.clf()
-
-
-    dataA = np.max(inclusive_bundled_lpgbthists_allevents,axis=1)    
-    dataB = np.max(philess60_bundled_lpgbthists_allevents,axis=1)
-
-    #print (np.amax(data,axis=0))
+    #Plot sum of truncated TCs over the sum of all TCs
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_1, 2, inclusive_hists[1], "frac_option_1")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], "frac_option_2")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], "frac_option_3")
     
-    data0A = dataA[:,0]
-    data0B = dataA[:,0]
-    axis = np.full(len(dataA), 0)
-    for c in range (1,42):
-        data0A = np.append(data0A,dataA[:,c])
-        data0B = np.append(data0B,dataB[:,c])
-        axis = np.append( axis, np.full(len(dataA), c))
-
-    pl.hist2d( axis , data0A , bins = [np.arange(-0.5,42.5,1),np.arange(0,50,1)],norm=LogNorm())
-    pl.colorbar()
-    pl.step(np.arange(-0.5,42.5,1),np.insert( np.floor(truncation_option_1) ,0,0),color='red',linewidth='3')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( np.floor(truncation_option_2) ,0,0),color='orange',linewidth='3')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( np.floor(truncation_option_3) ,0,0),color='cyan',linewidth='3')
-    pl.savefig( "testA.png" )
-    pl.clf()
-    pl.hist2d( axis , data0B , bins = [np.arange(-0.5,42.5,1),np.arange(0,50,1)],norm=LogNorm())
-    pl.colorbar()
-    pl.step(np.arange(-0.5,42.5,1),np.insert( np.floor(truncation_option_1/2.) ,0,0),color='red',linewidth='3')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( np.floor(truncation_option_2*(302./400.)) ,0,0),color='orange',linewidth='3')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( np.floor(truncation_option_3/2.) ,0,0),color='cyan',linewidth='3')
-    pl.savefig( "testB.png" )
-    pl.clf()
-
-
-
-    
-    # truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_1,inclusive_bundled_lpgbthists_allevents/6,truncation_option_1)),axis=(0,1))
-    # truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_1/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_1/2)),axis=(0,1))
-    # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6),axis=(0,1) )
-    # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6),axis=(0,1) )
-
-    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-
-
-
-
-
-    
-    
-    truncatedsum_A = np.sum(np.floor(np.where(inclusive_bundled_lpgbthists_allevents<truncation_option_1,inclusive_bundled_lpgbthists_allevents,truncation_option_1)),axis=(0,1))
-    truncatedsum_B = np.sum(np.floor(np.where(philess60_bundled_lpgbthists_allevents<truncation_option_1/2.,philess60_bundled_lpgbthists_allevents,truncation_option_1/2.)),axis=(0,1))
-    totalsumA = np.sum( inclusive_bundled_lpgbthists_allevents,axis=(0,1) )
-    totalsumB = np.sum( philess60_bundled_lpgbthists_allevents,axis=(0,1) )
-
-    A1 = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0 )
-    B1 = np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0 )
-
-    pl.step(np.arange(-0.5,42.5,1),np.insert( A1  ,0,0),color='red',linewidth='1')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( B1  ,0,0),color='orange',linewidth='1')
-    pl.savefig( "frac_option1.png" )
-    pl.clf()
-    
-    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-    truncatedsum_A = np.sum(np.floor(np.where(inclusive_bundled_lpgbthists_allevents<truncation_option_2,inclusive_bundled_lpgbthists_allevents,truncation_option_2)),axis=(0,1))
-    truncatedsum_B = np.sum(np.floor(np.where(philess60_bundled_lpgbthists_allevents<truncation_option_2/(400/302),philess60_bundled_lpgbthists_allevents,truncation_option_2/(400/302))),axis=(0,1))
-    totalsumA = np.sum( inclusive_bundled_lpgbthists_allevents,axis=(0,1) )
-    totalsumB = np.sum( philess60_bundled_lpgbthists_allevents,axis=(0,1) )
-
-    A1 = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0 )
-    B1 = np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0 )
-
-    pl.step(np.arange(-0.5,42.5,1),np.insert( A1  ,0,0),color='red',linewidth='1')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( B1  ,0,0),color='orange',linewidth='1')
-    pl.savefig( "frac_option2.png" )
-    pl.clf()
-    
-    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-    truncatedsum_A = np.sum(np.floor(np.where(inclusive_bundled_lpgbthists_allevents<truncation_option_3,inclusive_bundled_lpgbthists_allevents,truncation_option_3)),axis=(0,1))
-    truncatedsum_B = np.sum(np.floor(np.where(philess60_bundled_lpgbthists_allevents<truncation_option_3/2,philess60_bundled_lpgbthists_allevents,truncation_option_3/2.)),axis=(0,1))
-    totalsumA = np.sum( inclusive_bundled_lpgbthists_allevents,axis=(0,1) )
-    totalsumB = np.sum( philess60_bundled_lpgbthists_allevents,axis=(0,1) )
-
-    A1 = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0 )
-    B1 = np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0 )
-
-    pl.step(np.arange(-0.5,42.5,1),np.insert( A1  ,0,0),color='red',linewidth='1')
-    pl.step(np.arange(-0.5,42.5,1),np.insert( B1  ,0,0),color='orange',linewidth='1')
-    pl.savefig( "frac_option3.png" )
-    pl.clf()
-    
-    print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-
-    # truncatedsum_A = np.sum(np.floor(np.where(inclusive_bundled_lpgbthists_allevents<truncation_option_1*2,inclusive_bundled_lpgbthists_allevents,truncation_option_1*2)),axis=(0,1))
-    # truncatedsum_B = np.sum(np.floor(np.where(philess60_bundled_lpgbthists_allevents<truncation_option_1,philess60_bundled_lpgbthists_allevents,truncation_option_1)),axis=(0,1))
-    # totalsumA = np.sum( inclusive_bundled_lpgbthists_allevents,axis=(0,1) )
-    # totalsumB = np.sum( philess60_bundled_lpgbthists_allevents,axis=(0,1) )
-
-    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-    # truncatedsum_A = np.sum(np.floor(np.where(inclusive_bundled_lpgbthists_allevents<truncation_option_2*(400/302),inclusive_bundled_lpgbthists_allevents,truncation_option_2*(400/302))),axis=(0,1))
-    # truncatedsum_B = np.sum(np.floor(np.where(philess60_bundled_lpgbthists_allevents<truncation_option_2,philess60_bundled_lpgbthists_allevents,truncation_option_2)),axis=(0,1))
-    # totalsumA = np.sum( inclusive_bundled_lpgbthists_allevents,axis=(0,1) )
-    # totalsumB = np.sum( philess60_bundled_lpgbthists_allevents,axis=(0,1) )
-
-    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-    # truncatedsum_A = np.sum(np.floor(np.where(inclusive_bundled_lpgbthists_allevents<truncation_option_3*2,inclusive_bundled_lpgbthists_allevents,truncation_option_3*2)),axis=(0,1))
-    # truncatedsum_B = np.sum(np.floor(np.where(philess60_bundled_lpgbthists_allevents<truncation_option_3,philess60_bundled_lpgbthists_allevents,truncation_option_3)),axis=(0,1))
-    # totalsumA = np.sum( inclusive_bundled_lpgbthists_allevents,axis=(0,1) )
-    # totalsumB = np.sum( philess60_bundled_lpgbthists_allevents,axis=(0,1) )
-
-    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-
-    # truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_2,inclusive_bundled_lpgbthists_allevents/6,truncation_option_2)),axis=(0,1))
-    # truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_2/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_2/2)),axis=(0,1))
-    # # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
-    # # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
-
-
-    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
-    
-    # truncatedsum_A = np.sum(np.ceil(np.where(inclusive_bundled_lpgbthists_allevents/6<truncation_option_3,inclusive_bundled_lpgbthists_allevents/6,truncation_option_3)),axis=(0,1))
-    # truncatedsum_B = np.sum(np.ceil(np.where(philess60_bundled_lpgbthists_allevents/6<truncation_option_3/2,philess60_bundled_lpgbthists_allevents/6,truncation_option_3/2)),axis=(0,1))
-    # # totalsumA = np.sum( np.ceil(inclusive_bundled_lpgbthists_allevents/6) )
-    # # totalsumB = np.sum( np.ceil(philess60_bundled_lpgbthists_allevents/6) )
-    # print ( "A: " , np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A),where=totalsumA!=0) )
-    # print ( "B: " , np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B),where=totalsumB!=0) )
 
 
 def plotTruncation(eventData, outdir = ".", includePhi60 = True):
@@ -718,7 +627,7 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     pl.savefig( outdir + "/truncation.png" )
 
     pl.clf()
-    pl.step((inclusive_hists[1])[:-1], ratio_to_best)
+    pl.step((inclusive_hists[1])[:-1], ratio_to_best, where='post')
     pl.axhline(y=1, color='r', linestyle='--')
     pl.xlabel('r/z')
     pl.ylabel('Ratio of 1% truncation to likely best')
@@ -729,12 +638,13 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #These should be the same as those produced by plotbundles.py
     pl.clf()
     for bundle in np.sum(phigreater60_bundled_lpgbthists_allevents,axis=0):
-        pl.step((inclusive_hists[1])[:-1], bundle )
+        pl.step((inclusive_hists[1])[:-1], bundle, where='post')
+        print ((inclusive_hists[1])[:-1] , bundle, where='post')
     pl.ylim((0,1100000))
     pl.savefig( outdir + "/phiGreater60Integrated.png" )
     pl.clf()
     for bundle in np.sum(philess60_bundled_lpgbthists_allevents,axis=0):
-        pl.step((inclusive_hists[1])[:-1], bundle)
+        pl.step((inclusive_hists[1])[:-1], bundle, where='post')
     pl.ylim((0,1100000))
     pl.savefig( outdir + "/phiLess60Integrated.png" )
 
