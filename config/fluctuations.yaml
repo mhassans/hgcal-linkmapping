@@ -20,10 +20,16 @@ checkFluctuations:
   outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
 
-  #If value is a root file, assume per bin splitting
-  #Else the value indicates the fixed point in phi at which the split should occur
   phisplit:
-    value: data/ROverZHistograms_v11_relval_ttbar_20200716.root
+    #How to split in phi, if 'per_roverz_bin' need to provide a root splitfile
+    #If 'fixed' need to provide split values in radians,
+    #i.e. fixed point in phi at which the split should occur: 'RegionA_fixvalue_min' and #RegionB_fixvalue_max'
+    #'per_roverz_bin', 'fixed'
+    type: per_roverz_bin
+    
+    splitfile: data/ROverZHistograms_v11_relval_ttbar_20200716.root
+    RegionA_fixvalue_min: 0.95993 #55 degrees
+    RegionB_fixvalue_max: 0.95993 #55 degrees
   
 plot_MeanMax:
   eventData: data/alldata_neutrino_gun_2006022.txt

@@ -154,42 +154,47 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
     bundled_lpgbthists_allevents = []
     
-    ROverZ_per_module_PhiGreater60 = {}
-    ROverZ_per_module_PhiLess60 = {}
+    ROverZ_per_module_RegionA = {} #traditionally phi > 60 degrees
+    ROverZ_per_module_RegionB = {} #traditionally phi < 60 degrees
 
     #Value of split in phi (nominally 60 degrees)
     if phisplitConfig == None:
-        phi_split = np.full( nROverZBins, np.pi/3 )
+        phi_split_RegionA = np.full( nROverZBins, np.pi/3 )
+        phi_split_RegionB = np.full( nROverZBins, np.pi/3 )
     else:
-        if (str(phisplitConfig['value']).find(".root") == -1):
-            phi_split = np.full( nROverZBins, phisplitConfig['value'] )
+        if phisplitConfig['type'] == "fixed":
+            phi_split_RegionA = np.full( nROverZBins, phisplitConfig['RegionA_fixvalue_min'] )
+            phi_split_RegionB = np.full( nROverZBins, phisplitConfig['RegionB_fixvalue_max'] )
         else:
-            file_roverz_inclusive = ROOT.TFile(str(phisplitConfig['value']),"READ")
+            file_roverz_inclusive = ROOT.TFile(str(phisplitConfig['splitfile']),"READ")
             PhiVsROverZ_Total = file_roverz_inclusive.Get("ROverZ_Inclusive" )
-            split_indices = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
-            phi_split = np.zeros( nROverZBins )
-            for i,idx in enumerate(split_indices):
-                phi_split[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idx))
+            split_indices_RegionA = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
+            split_indices_RegionB = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
+            phi_split_RegionA = np.zeros( nROverZBins )
+            phi_split_RegionB = np.zeros( nROverZBins )
+            for i,(idxA,idxB) in enumerate(zip(split_indices_RegionA, split_indices_RegionB)):
+                phi_split_RegionA[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxA))
+                phi_split_RegionB[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxB))
                 
     for z in (-1,1):
         for sector in (0,1,2):
             key1 = (z,sector)
-            ROverZ_per_module_PhiGreater60[key1] = {}
-            ROverZ_per_module_PhiLess60[key1] = {}
+            ROverZ_per_module_RegionA[key1] = {}
+            ROverZ_per_module_RegionB[key1] = {}
 
             for i in range (15):
                 for j in range (15):
                     for k in range (1,53):
                         if  k < 28 and k%2 == 0:
                             continue
-                        ROverZ_per_module_PhiGreater60[key1][0,i,j,k] = np.empty(0)
-                        ROverZ_per_module_PhiLess60[key1][0,i,j,k] = np.empty(0)
+                        ROverZ_per_module_RegionA[key1][0,i,j,k] = np.empty(0)
+                        ROverZ_per_module_RegionB[key1][0,i,j,k] = np.empty(0)
 
             for i in range (5):
                 for j in range (12):
                     for k in range (37,53):
-                        ROverZ_per_module_PhiGreater60[key1][1,i,j,k] = np.empty(0)
-                        ROverZ_per_module_PhiLess60[key1][1,i,j,k] = np.empty(0)
+                        ROverZ_per_module_RegionA[key1][1,i,j,k] = np.empty(0)
+                        ROverZ_per_module_RegionB[key1][1,i,j,k] = np.empty(0)
     
     try:
         for entry,event in enumerate(tree):
@@ -208,14 +213,14 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             print ("Event number " + str(entry))
 
 
-            for key1 in ROverZ_per_module_PhiGreater60.keys():
-                for key2 in ROverZ_per_module_PhiGreater60[key1].keys():
-                    ROverZ_per_module_PhiGreater60[key1][key2] = np.empty(0)
-                    ROverZ_per_module_PhiLess60[key1][key2] = np.empty(0)
+            for key1 in ROverZ_per_module_RegionA.keys():
+                for key2 in ROverZ_per_module_RegionA[key1].keys():
+                    ROverZ_per_module_RegionA[key1][key2] = np.empty(0)
+                    ROverZ_per_module_RegionB[key1][key2] = np.empty(0)
                         
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
-            #(inclusively and for phi < 60)
+            #For RegionA and RegionB (traditionally phi > 60 degrees and phi < 60 degrees respectively)
 
             for u,v,layer,x,y,z,cellu,cellv in zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv):
 
@@ -224,11 +229,11 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     roverz_phi = getROverZPhi(x,y,z,sector)
                     roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
 
-                    if (roverz_phi[1] >= phi_split[roverz_bin-1]):
+                    if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
                         #There should be no r/z values lower than 0.076
-                        ROverZ_per_module_PhiGreater60[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiGreater60[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
-                    elif (roverz_phi[1] < phi_split[roverz_bin-1]):
-                        ROverZ_per_module_PhiLess60[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_PhiLess60[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+                        ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
+                    elif (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
+                        ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         
                 else: #Scintillator  
                     eta = cellu
@@ -237,22 +242,22 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     roverz_phi = getROverZPhi(x,y,z,sector)
                     roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
                     
-                    if (roverz_phi[1] >= phi_split[roverz_bin-1]):
-                        ROverZ_per_module_PhiGreater60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiGreater60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
-                    elif (roverz_phi[1] < phi_split[roverz_bin-1]):
-                        ROverZ_per_module_PhiLess60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_PhiLess60[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
+                    if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
+                        ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
+                    elif (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
+                        ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
             #Bin the TC module data
             module_hists_phigreater60 = {}
             module_hists_philess60 = {}
 
-            for key1,value1 in ROverZ_per_module_PhiGreater60.items():
+            for key1,value1 in ROverZ_per_module_RegionA.items():
                 module_hists_phigreater60[key1] = {}
                 for key2,value2 in value1.items():
                     module_hists_phigreater60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
                     
-            for key1,value1 in ROverZ_per_module_PhiLess60.items():
+            for key1,value1 in ROverZ_per_module_RegionB.items():
                 module_hists_philess60[key1] = {}
                 for key2,value2 in value1.items():
                     module_hists_philess60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
