@@ -124,7 +124,7 @@ def main():
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
         inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
-        #inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "fixed", fixvalue = 55)
+        #inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "fixed", RegionA_fixvalue_min = 55)
         if 'corrections' in config.keys():
             if config['corrections'] != None:
                 print ( "Applying geometry corrections" )
