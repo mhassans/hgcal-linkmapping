@@ -144,9 +144,9 @@ def getModuleHists(HistFile, split = "fixed", RegionA_fixvalue_min = 55, RegionB
     #Gives the bin number, whose low edge is the splitting point
     split_indices_RegionA = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = RegionA_fixvalue_min)
     split_indices_RegionB = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = RegionB_fixvalue_max)
-    
-    projectionX_RegionA = PhiVsROverZ.ProjectionX( "ROverZ_RegionA" )
-    projectionX_RegionB = PhiVsROverZ.ProjectionX( "ROverZ_RegionB" )
+
+    projectionX_RegionA = PhiVsROverZ.ProjectionX( "ROverZ_PhiRegionA" )
+    projectionX_RegionB = PhiVsROverZ.ProjectionX( "ROverZ_PhiRegionB" )
     projectionX_RegionA.Reset()
     projectionX_RegionB.Reset()
 

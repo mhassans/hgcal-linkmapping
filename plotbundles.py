@@ -83,10 +83,12 @@ def main():
     filein = ROOT.TFile("lpgbt_10.root")
     
     inclusive_hists = []
-    phi60_hists = []
+    regionA_hists = []
+    regionB_hists = []
     inclusive_hists_ratio = []
-    inclusive_hists_ratio_to_phi60 = []
-    phi60_hists_ratio = []
+    inclusive_hists_ratio_to_regionB = []
+    regionA_hists_ratio = []
+    regionB_hists_ratio = []
 
     #Load config file if exists,
     #Otherwise assume .root file input
@@ -120,7 +122,7 @@ def main():
         MappingFile = config['npy_configuration']['mappingFile']
         CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists']
         phisplitConfig = None
-        if 'phisplit' in subconfig.keys():
+        if 'phisplit' in config['npy_configuration'].keys():
             phisplitConfig = config['npy_configuration']['phisplit']
 
         data = loadDataFile(MappingFile) #dataframe
@@ -149,25 +151,34 @@ def main():
         bundles = getBundles(minigroups_swap,init_state)
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
 
-        inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input0")
+        inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input_inclusive")
+        regionA = inclusive_hists_input[0].Clone("inclusive_hists_input_regionA")
+        regionB = inclusive_hists_input[1]
         inclusive.Add( inclusive_hists_input[1] )
-        phi60 = inclusive_hists_input[1]
         inclusive.Scale(1./24)
-        phi60.Scale(1./24)
+        regionA.Scale(1./24)
+        regionB.Scale(1./24)
 
-        for i,(hist_inc,hist_phi60) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
-            inclusive_hists.append(hist_inc)
-            inclusive_hists[-1].Add( hist_phi60 )
+        for i,(hist_regionA,hist_regionB) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
+
+            inclusive_hist = hist_regionA.Clone("inclusive_hists_input_regionA" + str(i))
+
+            inclusive_hists.append(inclusive_hist)
+            inclusive_hists[-1].Add( hist_regionB )
             inclusive_hists_ratio.append( inclusive_hists[-1].Clone("inclusive_ratio_" + str(i) ) )
             inclusive_hists_ratio[-1].Divide(inclusive)
 
-            phi60_hists.append(hist_phi60)
-            phi60_hists_ratio.append(hist_phi60.Clone("phi60_ratio_" + str(i) ))
-            phi60_hists_ratio[-1].Divide(phi60)
+            regionA_hists.append(hist_regionA)
+            regionA_hists_ratio.append(hist_regionA.Clone("regionA_ratio_" + str(i) ))
+            regionA_hists_ratio[-1].Divide(regionA)
+            
+            regionB_hists.append(hist_regionB)
+            regionB_hists_ratio.append(hist_regionB.Clone("regionB_ratio_" + str(i) ))
+            regionB_hists_ratio[-1].Divide(regionB)
 
-            inclusive_hists_ratio_to_phi60.append(inclusive_hists[-1].Clone("inclusive_ratio_to_phi60_" + str(i) ))
-            inclusive_hists_ratio_to_phi60[-1].Divide(hist_phi60)
-            inclusive_hists_ratio_to_phi60[-1].SetLineColor(1+i)
+            inclusive_hists_ratio_to_regionB.append(inclusive_hists[-1].Clone("inclusive_ratio_to_regionB_" + str(i) ))
+            inclusive_hists_ratio_to_regionB[-1].Divide(hist_regionB)
+            inclusive_hists_ratio_to_regionB[-1].SetLineColor(1+i)
 
         module_hists = None
         inclusive_hists_input = None
@@ -178,30 +189,39 @@ def main():
         bundled_hists = None
 
     elif useROOT:
-        phi60 = filein.Get("ROverZ_PhiLess60")
-        inclusive = filein.Get("ROverZ_PhiGreater60")
-        ROOT.TH1.Add(inclusive,phi60)
+        regionA = filein.Get("ROverZ_PhiRegionA")
+        regionB = filein.Get("ROverZ_PhiRegionB")
+        ROOT.TH1.Add(regionA,regionB)
 
         for i in range (24):
-            inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
-            phi60_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
-            ROOT.TH1.Add(inclusive_hists[-1],phi60_hists[-1])
+            regionA_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
+            regionB_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
+            inclusive_hists.append( regionA_hists[-1].Clone("inclusive_hists_input_regionA" + str(i)) )
+            
+            ROOT.TH1.Add(inclusive_hists[-1],regionB_hists[-1])
             
             inclusive_hists_ratio.append (  inclusive_hists[-1].Clone ("inclusive_ratio_" + str(i)  )  )
-            phi60_hists_ratio.append (  phi60_hists[-1].Clone ("phi60_ratio_" + str(i)  )  )
-            inclusive_hists_ratio_to_phi60.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_phi60_" + str(i)  )  )
+            regionA_hists_ratio.append (  regionA_hists[-1].Clone ("regionA_ratio_" + str(i)  )  )
+            regionB_hists_ratio.append (  regionB_hists[-1].Clone ("regionB_ratio_" + str(i)  )  )
+            
+            
+            inclusive_hists_ratio_to_regionB.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_regionB_" + str(i)  )  )
 
             inclusive_hists_ratio[-1].Divide( inclusive )            
-            phi60_hists_ratio[-1].Divide( phi60  )
-            inclusive_hists_ratio_to_phi60[-1].Divide( phi60  )            
+            regionA_hists_ratio[-1].Divide( regionA  )
+            regionB_hists_ratio[-1].Divide( regionB  )
+            inclusive_hists_ratio_to_regionB[-1].Divide( regionB  )            
 
         
     print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio,"inclusive")
-    print_ratio_plot(phi60,phi60_hists,phi60_hists_ratio,"phi60")
-    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phi60,"inclusive_to_phi60")
+    print_ratio_plot(regionA,regionA_hists,regionA_hists_ratio,"regionA")
+    print_ratio_plot(regionB,regionB_hists,regionB_hists_ratio,"regionB")
+
+    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_regionB,"inclusive_to_regionB")
 
     print_numpy_plot( inclusive_hists, "numpy_inclusive")
-    print_numpy_plot( phi60_hists, "numpy_phi60")
+    print_numpy_plot( regionA_hists, "numpy_regionA")
+    print_numpy_plot( regionB_hists, "numpy_regionB")
 
 main()
     

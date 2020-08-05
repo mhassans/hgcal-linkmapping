@@ -139,7 +139,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             split = phisplitConfig['type']
             if 'RegionA_fixvalue_min' in phisplitConfig.keys():
                 RegionA_fixvalue_min = phisplitConfig['RegionA_fixvalue_min']
-            if 'RegionB_fixvalue_min' in phisplitConfig.keys():
+            if 'RegionB_fixvalue_max' in phisplitConfig.keys():
                 RegionB_fixvalue_max = phisplitConfig['RegionB_fixvalue_max']
 
         inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, RegionA_fixvalue_min = RegionA_fixvalue_min, RegionB_fixvalue_max = RegionB_fixvalue_max)
