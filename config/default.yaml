@@ -29,6 +29,15 @@ study_mapping:
 
   include_errors_in_chi2: False
 
+  phisplit:
+    #How to split in phi, either 'per_roverz_bin' (midpoint splits taken from CMSSW_ModuleHists file) or 'fixed'
+    #If 'fixed' need to provide split values in degrees,
+    #i.e. fixed point in phi at which the split should occur: 'RegionA_fixvalue_min' and #RegionB_fixvalue_max'
+    #'per_roverz_bin', 'fixed'
+    type: per_roverz_bin
+    RegionA_fixvalue_min: 55 #degrees
+    RegionB_fixvalue_max: 55 #degrees
+
 corrections:
   ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'
   ldmToHdmCorrectionType : 'FixedOcc'

@@ -118,13 +118,27 @@ def main():
         
         init_state = np.hstack(np.load(filein_str,allow_pickle=True))
         MappingFile = config['npy_configuration']['mappingFile']
-        CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists'] 
+        CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists']
+        phisplitConfig = None
+        if 'phisplit' in subconfig.keys():
+            phisplitConfig = config['npy_configuration']['phisplit']
 
         data = loadDataFile(MappingFile) #dataframe
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
-        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
-        #inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "fixed", RegionA_fixvalue_min = 55)
+        #Configuration for how to divide TCs into RegionA and RegionB (traditionally phi > 60 and phi < 60)
+        split = "per_roverz_bin"
+        RegionA_fixvalue_min = 55
+        RegionB_fixvalue_max = None
+        
+        if phisplitConfig != None:
+            split = phisplitConfig['type']
+            if 'RegionA_fixvalue_min' in phisplitConfig.keys():
+                RegionA_fixvalue_min = phisplitConfig['RegionA_fixvalue_min']
+            if 'RegionB_fixvalue_min' in phisplitConfig.keys():
+                RegionB_fixvalue_max = phisplitConfig['RegionB_fixvalue_max']
+
+        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, RegionA_fixvalue_min = RegionA_fixvalue_min, RegionB_fixvalue_max = RegionB_fixvalue_max)
         if 'corrections' in config.keys():
             if config['corrections'] != None:
                 print ( "Applying geometry corrections" )

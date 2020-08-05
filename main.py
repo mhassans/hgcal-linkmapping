@@ -124,12 +124,26 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     
     
 
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None,include_errors_in_chi2=False):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None, phisplitConfig=None, include_errors_in_chi2=False):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     try:
-        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
+
+        #Configuration for how to divide TCs into RegionA and RegionB (traditionally phi > 60 and phi < 60)
+        split = "per_roverz_bin"
+        RegionA_fixvalue_min = 55
+        RegionB_fixvalue_max = None
+        
+        if phisplitConfig != None:
+            split = phisplitConfig['type']
+            if 'RegionA_fixvalue_min' in phisplitConfig.keys():
+                RegionA_fixvalue_min = phisplitConfig['RegionA_fixvalue_min']
+            if 'RegionB_fixvalue_min' in phisplitConfig.keys():
+                RegionB_fixvalue_max = phisplitConfig['RegionB_fixvalue_max']
+
+        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, RegionA_fixvalue_min = RegionA_fixvalue_min, RegionB_fixvalue_max = RegionB_fixvalue_max)
+
     except EnvironmentError:
         print ( "File " + CMSSW_ModuleHists + " does not exist" )
         exit()
@@ -276,15 +290,18 @@ def main():
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
         correctionConfig = None
+        phisplitConfig = None
         include_errors_in_chi2 = False
         if 'corrections' in config.keys():
             correctionConfig = config['corrections']
         if 'include_errors_in_chi2' in subconfig.keys():
             include_errors_in_chi2 = subconfig['include_errors_in_chi2']
+        if 'phisplit' in subconfig.keys():
+            phisplitConfig = subconfig['phisplit']
         
             
         study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
-                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,include_errors_in_chi2=include_errors_in_chi2
+                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,phisplitConfig=phisplitConfig,include_errors_in_chi2=include_errors_in_chi2
             )
 
 

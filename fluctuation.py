@@ -163,8 +163,8 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
         phi_split_RegionB = np.full( nROverZBins, np.pi/3 )
     else:
         if phisplitConfig['type'] == "fixed":
-            phi_split_RegionA = np.full( nROverZBins, phisplitConfig['RegionA_fixvalue_min'] )
-            phi_split_RegionB = np.full( nROverZBins, phisplitConfig['RegionB_fixvalue_max'] )
+            phi_split_RegionA = np.full( nROverZBins, np.radians(phisplitConfig['RegionA_fixvalue_min']) )
+            phi_split_RegionB = np.full( nROverZBins, np.radians(phisplitConfig['RegionB_fixvalue_max']) )
         else:
             file_roverz_inclusive = ROOT.TFile(str(phisplitConfig['splitfile']),"READ")
             PhiVsROverZ_Total = file_roverz_inclusive.Get("ROverZ_Inclusive" )
