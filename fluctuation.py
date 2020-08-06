@@ -232,7 +232,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
                         #There should be no r/z values lower than 0.076
                         ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
-                    elif (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
+                    if (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
                         ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         
                 else: #Scintillator  
@@ -244,7 +244,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     
                     if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
                         ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
-                    elif (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
+                    if (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
                         ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
 
 
@@ -385,6 +385,7 @@ def sumMaximumOverAllEventsAndBundles(truncation,data):
     if ( valB < 0 ):
          valB = valB * -1.5
 
+
     optval = valA + valB
     return optval
 
@@ -432,11 +433,6 @@ def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, savename
     truncatedsum_A = np.sum(np.where(dataA<truncation_curve, dataA, truncation_curve),axis=(0,1))
     truncatedsum_B = np.sum(np.where(dataB<truncation_curve/TCratio, dataB, truncation_curve/TCratio),axis=(0,1))
 
-    # print ( truncatedsum_A )
-    # print ( np.sum((np.where(dataA<truncation_curve, dataA, truncation_curve)),axis=(0,1)) )
-
-    #truncatedsum_B = np.sum(np.floor(np.where(dataB<truncation_curve/TCratio, dataB, truncation_curve/TCratio)),axis=(0,1))
-
     #Divide to get the fraction, taking into account division by zero
     ratioA = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A), where=totalsumA!=0 )
     ratioB = np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B), where=totalsumB!=0 )
@@ -457,12 +453,11 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     #Get an array of size nROverZbins, which indicates the maximum number of TCs allowed in each RoverZ bin (the values for data_B are exactly half) (still to consider odd values)
     
     #'scalar' is the value by which the maximum (of data_A or data_B x TCratio) is multiplied to get the truncation values
-    result = optimize.minimize_scalar(sumMaximumOverAllEventsAndBundles,args=[data_A, data_B, maxtcs_A, maxtcs_B],bounds=(0.01,2.0),method='bounded')
+    result = optimize.minimize_scalar(sumMaximumOverAllEventsAndBundles,args=[data_A, data_B, maxtcs_A, maxtcs_B],bounds=(-1,1.0),method='bounded')
     scalar = result.x
 
     maximum_A = np.amax(data_A,axis=(1,0))
     maximum_B = np.amax(data_B,axis=(1,0))
-
 
     #Find the floating-point truncation values and round down to make these integers.
     #This will be less than the allowed total due to rounding down.
@@ -475,6 +470,21 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     arg = np.argsort(truncation_floor-truncation_float)[:int(integer_difference)]
     truncation_floor[arg]+=1
 
+    #Reduce the maximum bins of truncation_floor if sum of truncation_floor is larger than that allowed by maxtcs_A and maxtcs_B
+    #Done consecutively in A and B so as not to overcorrect
+    diffA = np.sum(truncation_floor) - maxtcs_A
+    if ( diffA < 0 ): diffA = 0
+    arg = np.argsort(truncation_floor)[:int(diffA)]
+    truncation_floor[arg]-=1
+
+    diffB = np.sum(truncation_floor)*(maxtcs_B/maxtcs_A) - maxtcs_B
+    if ( diffB < 0 ): diffB = 0
+    arg = np.argsort(truncation_floor)[:int(diffB)]
+    truncation_floor[arg]-=1
+
+    diffA = np.sum(truncation_floor) - maxtcs_A
+    diffB = np.sum(truncation_floor)*(maxtcs_B/maxtcs_A) - maxtcs_B
+    
     return truncation_floor
 
 def loadFluctuationData(eventData):
@@ -522,17 +532,26 @@ def studyTruncationOptions(eventData, outdir = ".", includePhi60 = True):
     truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
     print ("Get truncation value for option 3")
     truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
+    print ("Get truncation value for option 4")
+    truncation_option_4 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,466,466)
+    print ("Get truncation value for option 5")
+    truncation_option_5 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,780,780)
 
     #Once we have the truncation values, need to find how many TCs are lost
     print ("Plotting histograms")
     #Fill a 2D histogram per bunch-crossing with N_TCs (maximum over bundles) 
-    plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],"NTCs_Vs_ROverZ_A",[truncation_option_1,truncation_option_2,truncation_option_3])
-    plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],"NTCs_Vs_ROverZ_B",[truncation_option_1,truncation_option_2,truncation_option_3],[2,400/302,2])
+    plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A",[truncation_option_1,truncation_option_2,truncation_option_3])
+    plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B",[truncation_option_1,truncation_option_2,truncation_option_3],[2,400/302,2])
+
+    plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",[truncation_option_4,truncation_option_5])
+    plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",[truncation_option_4,truncation_option_5],[1,1])
 
     #Plot sum of truncated TCs over the sum of all TCs
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_1, 2, inclusive_hists[1], "frac_option_1")
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], "frac_option_2")
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], "frac_option_3")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_1, 2, inclusive_hists[1], outdir + "/frac_option_1")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], outdir + "/frac_option_2")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], outdir + "/frac_option_3")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_4, 1, inclusive_hists[1], outdir + "/frac_option_4")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_5, 1, inclusive_hists[1], outdir + "/frac_option_5")
     
 
 
