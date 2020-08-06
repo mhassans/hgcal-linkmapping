@@ -663,7 +663,6 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     pl.clf()
     for bundle in np.sum(phigreater60_bundled_lpgbthists_allevents,axis=0):
         pl.step((inclusive_hists[1])[:-1], bundle, where='post')
-        print ((inclusive_hists[1])[:-1] , bundle, where='post')
     pl.ylim((0,1100000))
     pl.savefig( outdir + "/phiGreater60Integrated.png" )
     pl.clf()
