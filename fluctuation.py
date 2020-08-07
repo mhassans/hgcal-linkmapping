@@ -122,7 +122,7 @@ def etaphiMapping(layer, etaphi):
 
 
 
-def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", correctionConfig=None, phisplitConfig=None, beginEvent = -1, endEvent = -1):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", weight_by_tcPt=False, correctionConfig=None, phisplitConfig=None, beginEvent = -1, endEvent = -1):
 
     nROverZBins = 42
     #To get binning for r/z histograms
@@ -156,7 +156,8 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     
     ROverZ_per_module_RegionA = {} #traditionally phi > 60 degrees
     ROverZ_per_module_RegionB = {} #traditionally phi < 60 degrees
-
+    ROverZ_per_module_RegionA_tcPt = {} 
+    ROverZ_per_module_RegionB_tcPt = {} 
     #Value of split in phi (nominally 60 degrees)
     if phisplitConfig == None:
         phi_split_RegionA = np.full( nROverZBins, np.pi/3 )
@@ -181,6 +182,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             key1 = (z,sector)
             ROverZ_per_module_RegionA[key1] = {}
             ROverZ_per_module_RegionB[key1] = {}
+            if weight_by_tcPt:
+                ROverZ_per_module_RegionA_tcPt[key1] = {}
+                ROverZ_per_module_RegionB_tcPt[key1] = {}
 
             for i in range (15):
                 for j in range (15):
@@ -189,12 +193,18 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                             continue
                         ROverZ_per_module_RegionA[key1][0,i,j,k] = np.empty(0)
                         ROverZ_per_module_RegionB[key1][0,i,j,k] = np.empty(0)
+                        if weight_by_tcPt:
+                            ROverZ_per_module_RegionA_tcPt[key1][0,i,j,k] = np.empty(0)
+                            ROverZ_per_module_RegionB_tcPt[key1][0,i,j,k] = np.empty(0)
 
             for i in range (5):
                 for j in range (12):
                     for k in range (37,53):
                         ROverZ_per_module_RegionA[key1][1,i,j,k] = np.empty(0)
                         ROverZ_per_module_RegionB[key1][1,i,j,k] = np.empty(0)
+                        if weight_by_tcPt:
+                            ROverZ_per_module_RegionA_tcPt[key1][0,i,j,k] = np.empty(0)
+                            ROverZ_per_module_RegionB_tcPt[key1][0,i,j,k] = np.empty(0)
     
     try:
         for entry,event in enumerate(tree):
@@ -217,13 +227,27 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                 for key2 in ROverZ_per_module_RegionA[key1].keys():
                     ROverZ_per_module_RegionA[key1][key2] = np.empty(0)
                     ROverZ_per_module_RegionB[key1][key2] = np.empty(0)
+                    if weight_by_tcPt:
+                        ROverZ_per_module_RegionA_tcPt[key1][key2] = np.empty(0)
+                        ROverZ_per_module_RegionB_tcPt[key1][key2] = np.empty(0)
                         
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
-            #For RegionA and RegionB (traditionally phi > 60 degrees and phi < 60 degrees respectively)
+            #for RegionA and RegionB (traditionally phi > 60 degrees and phi < 60 degrees respectively)
 
-            for u,v,layer,x,y,z,cellu,cellv in zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv):
+            #Check if tc_pt exists (needed to weight TCs by TC pT)
+            eventzip = zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv)
+            if ( weight_by_tcPt ):
+                if hasattr(event, 'tc_pt'):
+                    eventzip = zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv,event.tc_pt)
+                else:
+                    print ('tc_pt not found in TTree - switching to non-weighting mode')
+                    weight_by_tcPt = False
 
+            for variables in eventzip:
+                u,v,layer,x,y,z,cellu,cellv = variables[:8]
+                if weight_by_tcPt: pt = variables[8]
+                
                 if ( u > -990 ): #Silicon
                     uv,sector = rotate_to_sector_0(u,v,layer)
                     roverz_phi = getROverZPhi(x,y,z,sector)
@@ -231,9 +255,13 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
 
                     if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
                         #There should be no r/z values lower than 0.076
-                        ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))            
+                        ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+                        if weight_by_tcPt:
+                            ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer],pt)            
                     if (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
                         ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+                        if weight_by_tcPt:
+                            ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer],pt)
                         
                 else: #Scintillator  
                     eta = cellu
@@ -243,11 +271,13 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
                     
                     if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
-                        ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))            
+                        ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
+                        if weight_by_tcPt:
+                            ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],pt)            
                     if (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
                         ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
-
-
+                        if weight_by_tcPt:
+                            ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],pt)
             #Bin the TC module data
             module_hists_phigreater60 = {}
             module_hists_philess60 = {}
@@ -255,12 +285,30 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             for key1,value1 in ROverZ_per_module_RegionA.items():
                 module_hists_phigreater60[key1] = {}
                 for key2,value2 in value1.items():
-                    module_hists_phigreater60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
-                    
+                    weights = None
+                    if weight_by_tcPt:
+                        weights = ROverZ_per_module_RegionA_tcPt[key1][key2]
+                        if (weights.sum() == 0):
+                            weights = np.ones(len(weights))#Generally will be an empty array
+                        else:
+                            weights = weights * ( len(weights) / weights.sum() )
+                        
+                    module_hists_phigreater60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58), weights = weights )[0]
+
+
+
             for key1,value1 in ROverZ_per_module_RegionB.items():
                 module_hists_philess60[key1] = {}
                 for key2,value2 in value1.items():
-                    module_hists_philess60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
+                    weights = None
+                    if weight_by_tcPt:
+                        weights = ROverZ_per_module_RegionB_tcPt[key1][key2]
+                        if (weights.sum() == 0):
+                            weights = np.ones(len(weights))#Generally will be an empty array
+                        else:
+                            weights = weights * ( len(weights) / weights.sum() )
+                        
+                    module_hists_philess60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58), weights = weights )[0]
 
 
             for z in (-1,1):
@@ -532,10 +580,12 @@ def studyTruncationOptions(eventData, outdir = ".", includePhi60 = True):
     truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
     print ("Get truncation value for option 3")
     truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
+
+    #Don't want inclusive here to be region A, rather phigreater60
     print ("Get truncation value for option 4")
-    truncation_option_4 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,466,466)
+    truncation_option_4 = getTruncationValuesRoverZ(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,466,466)
     print ("Get truncation value for option 5")
-    truncation_option_5 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,780,780)
+    truncation_option_5 = getTruncationValuesRoverZ(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,780,780)
 
     #Once we have the truncation values, need to find how many TCs are lost
     print ("Plotting histograms")
@@ -543,15 +593,17 @@ def studyTruncationOptions(eventData, outdir = ".", includePhi60 = True):
     plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A",[truncation_option_1,truncation_option_2,truncation_option_3])
     plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B",[truncation_option_1,truncation_option_2,truncation_option_3],[2,400/302,2])
 
-    plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",[truncation_option_4,truncation_option_5])
+    #Don't want inclusive here to be region A, rather phigreater60
+    plot_NTCs_Vs_ROverZ(phigreater60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",[truncation_option_4,truncation_option_5])
     plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",[truncation_option_4,truncation_option_5],[1,1])
 
     #Plot sum of truncated TCs over the sum of all TCs
     plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_1, 2, inclusive_hists[1], outdir + "/frac_option_1")
     plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], outdir + "/frac_option_2")
     plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], outdir + "/frac_option_3")
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_4, 1, inclusive_hists[1], outdir + "/frac_option_4")
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_5, 1, inclusive_hists[1], outdir + "/frac_option_5")
+
+    plot_frac_Vs_ROverZ( phigreater60_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_4, 1, inclusive_hists[1], outdir + "/frac_option_4")
+    plot_frac_Vs_ROverZ( phigreater60_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_5, 1, inclusive_hists[1], outdir + "/frac_option_5")
     
 
 
@@ -695,7 +747,7 @@ def main():
             correctionConfig = config['corrections']
 
         subconfig = config['checkFluctuations']
-        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'], beginEvent = subconfig['beginEvent'], endEvent = subconfig['endEvent'])
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], weight_by_tcPt = subconfig['weight_by_tcPt'], correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'], beginEvent = subconfig['beginEvent'], endEvent = subconfig['endEvent'])
 
     #Plotting functions
     
