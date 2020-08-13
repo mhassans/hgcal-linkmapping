@@ -282,18 +282,13 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     #Truncation values, if need to truncate based on E_T when running over ntuple    
     truncation_options = []
     ABratios = []
-    save_sum_tc_Pt = False
+    save_sum_tcPt = False
     if ( tcPtConfig != None ):
         save_sum_tcPt = tcPtConfig['save_sum_tcPt']
         options_to_use = tcPtConfig['use_truncation_options']
-        print ("option = ")
-        print (options_to_use)
         for option in options_to_use:
             truncation_options.append(tcPtConfig['truncation_option_'+str(option)])
             ABratios.append(eval(str(tcPtConfig['ABratio_'+str(option)])))
-
-    print (truncation_options)
-    print (ABratios)
             
     #Load the CMSSW ntuple to get per event and per trigger cell information
     rootfile = ROOT.TFile.Open( cmsswNtuple , "READ" )
@@ -487,8 +482,6 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                         bundled_pt_hists = applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,
                                                                        truncation_options,
                                                                        [2,400/302,2],roverzBinning,regionAisInclusive=tcPtConfig['regionAisInclusive'])
-                        print ("Bundledpthists = ")
-                        print (bundled_pt_hists)
                         bundled_pt_hists_allevents.append(bundled_pt_hists)
 
     except KeyboardInterrupt:
