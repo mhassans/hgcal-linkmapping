@@ -20,9 +20,9 @@ checkFluctuations:
   cmsswNtuple: data/small_v11_relval_ttbar_200611.root
   outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
-  save_sum_tcPt: False
 
   #Set 'save_sum_tcPt' to be True if you want to save the sum of TC_pt, with different truncation options
+
   tcPtConfig:
     save_sum_tcPt: False
     regionAisInclusive: True #Set to 'True' for options 1, 2, 3, and False for the 4-link options 4, and 5
@@ -70,4 +70,4 @@ studyTruncationOptions:
 
 
 plot_Truncation_tc_Pt:
-  eventData: temp_from0_to0_sumpt_total.txt
+  eventData: data/alldata_ttbar_200813_sumpt.txt
