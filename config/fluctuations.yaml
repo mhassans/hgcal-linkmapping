@@ -3,6 +3,7 @@ function:
   plot_MeanMax: True
   plot_Truncation: True
   studyTruncationOptions: False
+  plot_Truncation_tc_Pt: False
   
 print_level: 0
 output_dir: .
@@ -19,7 +20,30 @@ checkFluctuations:
   cmsswNtuple: data/small_v11_relval_ttbar_200611.root
   outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
-  weight_by_tcPt: False
+  save_sum_tcPt: False
+
+  #Set 'save_sum_tcPt' to be True if you want to save the sum of TC_pt, with different truncation options
+  tcPtConfig:
+    save_sum_tcPt: False
+    regionAisInclusive: True #Set to 'True' for options 1, 2, 3, and False for the 4-link options 4, and 5
+    use_truncation_options: [1,2,3] #Which of the options defined below will be considered
+    truncation_option_1: [ 1.,  6., 14., 13., 18., 13., 12., 17., 19., 11., 10., 14., 13.,
+       13., 14., 12., 12., 14., 13., 11., 10., 13., 11., 13., 14., 12.,
+        9.,  9.,  9., 10., 12.,  8.,  4.,  4.,  2.,  3.,  3.,  2.,  1.,
+        1.,  0.,  0.]
+    truncation_option_2: [ 1.,  6., 16., 14., 17., 13., 13., 17., 19., 12., 10., 14., 12.,
+       12., 13., 12., 12., 14., 12., 11., 10., 13., 11., 12., 14., 12.,
+        9.,  9.,  9., 10., 12.,  8.,  4.,  4.,  2.,  3.,  3.,  2.,  1.,
+        1.,  0.,  0.]
+    truncation_option_3: [ 1., 12., 26., 23., 31., 23., 21., 30., 34., 20., 18., 25., 23.,
+       23., 24., 21., 22., 25., 23., 19., 18., 23., 20., 23., 25., 22.,
+       17., 17., 16., 18., 22., 14.,  6.,  6.,  5.,  5.,  5.,  3.,  3.,
+        2.,  0.,  0.]
+    #The ratio between the maximum number of TCs in region A and region B
+    ABratio_1: 2 
+    ABratio_2: 400/302
+    ABratio_3: 2
+    
 
   phisplit:
     #How to split in phi, if 'per_roverz_bin' need to provide a root splitfile
@@ -43,3 +67,7 @@ plot_Truncation:
 studyTruncationOptions:
   eventData: data/alldata_neutrino_gun_2006022.txt
   includePhi60: True
+
+
+plot_Truncation_tc_Pt:
+  eventData: temp_from0_to0_sumpt_total.txt
