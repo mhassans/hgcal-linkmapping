@@ -87,6 +87,28 @@ def getModuleHists1D(HistFile):
             
     return inclusive_hists,module_hists
 
+#Function to read TC histograms file with 1D histograms
+def getModuleTCHists(HistFile):
+
+    module_hists = {}
+    
+    infiles.append(ROOT.TFile.Open(HistFile,"READ"))
+
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                module_hists[0,i,j,k] = infiles[-1].Get("nTCs_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                module_hists[1,i,j,k] = infiles[-1].Get("nTCs_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    return module_hists
+
 
 def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55):
     #If split is a fixed value in each R/Z bin, the fixvalue can be set, otherwise it is ignored
@@ -429,6 +451,34 @@ def getlpGBTHists(data, module_hists):
         lpgbt_hists.append(temp)
     
     return lpgbt_hists
+
+def getMiniModuleGroups(data,minigroups_swap):
+
+    minigroups_modules = {}
+    
+    for minigroup_id,lpgbts in minigroups_swap.items():
+
+        module_list = []
+
+        for lpgbt in lpgbts:
+
+            data_list = data[ ((data['TPGId1']==lpgbt) | (data['TPGId2']==lpgbt)) ]
+
+            for index, row in data_list.iterrows():
+
+                if ( row['density']==2 ):
+                    mod = [1, row['u'], row['v'], row['layer']]
+                else:
+                    mod = [0, row['u'], row['v'], row['layer']]
+
+                if mod not in module_list:
+                    module_list.append(mod)
+
+        minigroups_modules[minigroup_id] = module_list
+        
+    return minigroups_modules
+    
+
 
 def getMinilpGBTGroups(data, minigroup_type="minimal"):
 

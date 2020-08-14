@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
-from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
+from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
+from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo,getModuleTCHists
 from plotting import plot, plot2D
 from example_minigroup_configuration import example_minigroup_configuration
 
@@ -51,7 +51,7 @@ def plot_ModuleLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
     plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
     plot2D(lpgbt_loads_tcs,lpgbt_layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
     plot2D(lpgbt_loads_words,lpgbt_layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
-
+    
 def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
 
     #Load mapping file
@@ -88,6 +88,41 @@ def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
                 fileout.write("\n")
                 
     fileout.close()
+
+def produce_nTCsPerModuleHists(MappingFile,allocation,CMSSW_ModuleHists,minigroup_type="minimal",correctionConfig=None):
+
+    #Load mapping file
+    data = loadDataFile(MappingFile) 
+
+    #List of which minigroups are assigned to each bundle 
+    configuration = np.hstack(np.load(allocation,allow_pickle=True))
+
+    #Get minigroups
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+
+    #Get list of which modules are in each minigroup
+    minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
+    
+    #Bundle together minigroup configuration
+    bundles = getBundles(minigroups_swap,configuration)
+
+    #Get nTC hists per module
+    module_hists = getModuleTCHists(CMSSW_ModuleHists)
+    
+    #Open output file
+
+    outfile = ROOT.TFile.Open("hists_per_bundle","RECREATE")
+    for b,bundle in enumerate(bundles):
+        outfile.mkdir("bundle_" + str(b))
+        outfile.cd("bundle_" + str(b)) 
+        for minigroup in bundle:
+
+            for module in minigroups_modules[minigroup]:
+
+                module_hists[tuple(module)].Write()
+
+        outfile.cd()
+
     
 def check_for_missing_modules_inMappingFile(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
@@ -329,6 +364,10 @@ def main():
     if ( config['function']['produce_AllocationFile'] ):
         subconfig = config['produce_AllocationFile']
         produce_AllocationFile(subconfig['MappingFile'],subconfig['allocation'],minigroup_type=subconfig['minigroup_type'])
+
+    if ( config['function']['produce_nTCsPerModuleHists'] ):
+        subconfig = config['produce_nTCsPerModuleHists']
+        produce_nTCsPerModuleHists(subconfig['MappingFile'],subconfig['allocation'],CMSSW_ModuleHists = subconfig['CMSSW_ModuleHists'],minigroup_type=subconfig['minigroup_type'],correctionConfig=None)
 
     
 main()

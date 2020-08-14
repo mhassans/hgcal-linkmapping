@@ -11,39 +11,12 @@ import pickle
 from scipy import optimize
 from process import loadDataFile
 from process import getPhiSplitIndices
-from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists
+from process import getMinilpGBTGroups,getBundles,getBundledlpgbtHists,getMiniModuleGroups
 from rotate import rotate_to_sector_0
 from geometryCorrections import applyGeometryCorrectionsNumpy,loadSiliconNTCCorrectionFile,applyGeometryCorrectionsTCPtRawData
 import time
 import yaml
 import sys, os
-
-def getMiniModuleGroups(data,minigroups_swap):
-
-    minigroups_modules = {}
-    
-    for minigroup_id,lpgbts in minigroups_swap.items():
-
-        module_list = []
-
-        for lpgbt in lpgbts:
-
-            data_list = data[ ((data['TPGId1']==lpgbt) | (data['TPGId2']==lpgbt)) ]
-
-            for index, row in data_list.iterrows():
-
-                if ( row['density']==2 ):
-                    mod = [1, row['u'], row['v'], row['layer']]
-                else:
-                    mod = [0, row['u'], row['v'], row['layer']]
-
-                if mod not in module_list:
-                    module_list.append(mod)
-
-        minigroups_modules[minigroup_id] = module_list
-        
-    return minigroups_modules
-    
 
 def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
     
@@ -249,9 +222,14 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
                 total_sum_regionB = np.sum(pt_values_regionB)
 
                 #Save the total pT and truncated pT
-                sumPt_truncated_regionA[roverz] = total_sum_regionA - sum_truncated_regionA
-                sumPt_truncated_regionB[roverz] = total_sum_regionB - sum_truncated_regionB
+                # sumPt_truncated_regionA[roverz] = total_sum_regionA - sum_truncated_regionA
+                # sumPt_truncated_regionB[roverz] = total_sum_regionB - sum_truncated_regionB
 
+                #TEMP
+                sumPt_truncated_regionA[roverz] = len (pt_values_regionA) - number_truncated_regionA
+                sumPt_truncated_regionB[roverz] = len (pt_values_regionB) - number_truncated_regionB
+                
+                
             regionA_truncated[b] = sumPt_truncated_regionA
             regionB_truncated[b] = sumPt_truncated_regionB
             regionA_truncated_summed+=sumPt_truncated_regionA
@@ -268,7 +246,7 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
     return alldata
 
 
-def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", tcPtConfig=None, correctionConfig=None, phisplitConfig=None, beginEvent = -1, endEvent = -1):
+def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="alldata", tcPtConfig=None, correctionConfig=None, phisplitConfig=None, truncationConfig = None, save_tc_hists=False, beginEvent = -1, endEvent = -1):
 
     nROverZBins = 42
     #To get binning for r/z histograms
@@ -285,11 +263,12 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     save_sum_tcPt = False
     if ( tcPtConfig != None ):
         save_sum_tcPt = tcPtConfig['save_sum_tcPt']
-        options_to_use = tcPtConfig['use_truncation_options']
-        for option in options_to_use:
-            truncation_options.append(tcPtConfig['truncation_option_'+str(option)])
-            ABratios.append(eval(str(tcPtConfig['ABratio_'+str(option)])))
-            
+        options_to_study = tcPtConfig['options_to_study']
+        if ( truncationConfig != None ):
+            for option in options_to_study:
+                truncation_options.append(truncationConfig['option'+str(option)]['predetermined_values'])
+                ABratios.append(truncationConfig['option'+str(option)]['MaxTCsA']/truncationConfig['option'+str(option)]['MaxTCsB'])
+
     #Load the CMSSW ntuple to get per event and per trigger cell information
     rootfile = ROOT.TFile.Open( cmsswNtuple , "READ" )
     tree = rootfile.Get("HGCalTriggerNtuple")
@@ -317,6 +296,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     ROverZ_per_module_RegionB = {} #traditionally phi < 60 degrees
     ROverZ_per_module_RegionA_tcPt = {} 
     ROverZ_per_module_RegionB_tcPt = {} 
+
+    nTCs_per_module = {}
+
     #Value of split in phi (nominally 60 degrees)
     if phisplitConfig == None:
         phi_split_RegionA = np.full( nROverZBins, np.pi/3 )
@@ -335,7 +317,21 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             for i,(idxA,idxB) in enumerate(zip(split_indices_RegionA, split_indices_RegionB)):
                 phi_split_RegionA[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxA))
                 phi_split_RegionB[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxB))
-                
+
+    if save_tc_hists:
+        for i in range (15):
+            for j in range (15):
+                for k in range (1,53):
+                    if  k < 28 and k%2 == 0:
+                        continue
+                    nTCs_per_module[0,i,j,k] = ROOT.TH1D( "nTCs_silicon_" + str(i) + "_" + str(j) + "_" + str(k), "", 49, -0.5, 48.5 )
+
+        for i in range (5):
+            for j in range (12):
+                for k in range (37,53):
+                    nTCs_per_module[1,i,j,k] = ROOT.TH1D( "nTCs_scintillator_" + str(i) + "_" + str(j) + "_" + str(k), "", 49, -0.5, 48.5 )
+
+
     for z in (-1,1):
         for sector in (0,1,2):
             key1 = (z,sector)
@@ -460,10 +456,15 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                         
                     #the module hists are a numpy array of size 42
                     module_hists = [module_hists_phigreater60[z,sector],module_hists_philess60[z,sector]]
-                            
+                    
                     #Apply geometry corrections
                     applyGeometryCorrectionsNumpy( module_hists, modulesToCorrect )
 
+                    #Save the integral of module_hists, per event 
+                    if save_tc_hists:
+                        for module,hist in nTCs_per_module.items():
+                            hist.Fill( np.round(np.sum(module_hists[0][module]) + np.sum(module_hists[1][module])) )
+                    
                     #Sum the individual module histograms to get the minigroup histograms
                     minigroup_hists = getMiniGroupHistsNumpy(module_hists,minigroups_modules)
 
@@ -481,7 +482,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                         
                         bundled_pt_hists = applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,
                                                                        truncation_options,
-                                                                       [2,400/302,2],roverzBinning,regionAisInclusive=tcPtConfig['regionAisInclusive'])
+                                                                       ABratios,roverzBinning,regionAisInclusive=tcPtConfig['regionAisInclusive'])
                         bundled_pt_hists_allevents.append(bundled_pt_hists)
 
     except KeyboardInterrupt:
@@ -500,7 +501,10 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
         if save_sum_tcPt:
             with open( outputName + "_sumpt.txt", "wb") as filep:
                 pickle.dump(bundled_pt_hists_allevents, filep)
-
+        if save_tc_hists:
+            outfile = ROOT.TFile("NTCs_v11_relval_ttbar_20200814.root","RECREATE")
+            for hist in nTCs_per_module.values():
+                hist.Write()
 
 def plotMeanMax(eventData, outdir = ".", includePhi60 = True):
     #Load pickled per-event bundle histograms
@@ -719,61 +723,68 @@ def loadFluctuationData(eventData):
 
     return dataA_bundled_lpgbthists_allevents,dataB_bundled_lpgbthists_allevents
     
-def studyTruncationOptions(eventData, outdir = ".", includePhi60 = True):
+def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir = "."):
     
     #Load pickled per-event bundle histograms
-    phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents = loadFluctuationData(eventData)
+    phidivisionX_bundled_lpgbthists_allevents,phidivisionY_bundled_lpgbthists_allevents = loadFluctuationData(eventData)
 
     os.system("mkdir -p " + outdir)
 
-    nbinsROverZ = len(phigreater60_bundled_lpgbthists_allevents[0][0]) #42
+    nbinsROverZ = len(phidivisionX_bundled_lpgbthists_allevents[0][0]) #42
     
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = nbinsROverZ, range = (0.076,0.58) )
 
-    #taking for each bin the maximum of the inclusive and phi60 x 2
-    inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
+    inclusive_bundled_lpgbthists_allevents = phidivisionX_bundled_lpgbthists_allevents + phidivisionY_bundled_lpgbthists_allevents
 
-    print ("Get truncation value for option 1")
-    truncation_option_1 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,200)
-    print ("Get truncation value for option 2")
-    truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
-    print ("Get truncation value for option 3")
-    truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
+    #RegionA is either phidivisionX (in the case of options 4 and 5) or phidivisionY (in the cases of 1, 2 and 3)
+    
+    truncation_options = []
+    for option in options_to_study:
+        print ("Get truncation value for option " + str(option))
+        
+        regionA_bundled_lpgbthists_allevents = phidivisionX_bundled_lpgbthists_allevents
+        if truncationConfig['option'+str(option)]:
+           regionA_bundled_lpgbthists_allevents = inclusive_bundled_lpgbthists_allevents         
+        regionB_bundled_lpgbthists_allevents = phidivisionY_bundled_lpgbthists_allevents
 
+        truncation_options.append( getTruncationValuesRoverZ(regionA_bundled_lpgbthists_allevents,regionB_bundled_lpgbthists_allevents,truncationConfig['option'+str(option)]['MaxTCsA'],truncationConfig['option'+str(option)]['MaxTCsB']) )
+
+        
+    #truncation_option_1 = 
+    # print ("Get truncation value for option 2")
+    # truncation_option_2 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,400,302)
+    # print ("Get truncation value for option 3")
+    # truncation_option_3 = getTruncationValuesRoverZ(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,714,357)
+
+    
     #Don't want inclusive here to be region A, rather phigreater60
-    print ("Get truncation value for option 4")
-    truncation_option_4 = getTruncationValuesRoverZ(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,466,466)
-    print ("Get truncation value for option 5")
-    truncation_option_5 = getTruncationValuesRoverZ(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,780,780)
+    # print ("Get truncation value for option 4")
+    # truncation_option_4 = getTruncationValuesRoverZ(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,466,466)
+    # print ("Get truncation value for option 5")
+    # truncation_option_5 = getTruncationValuesRoverZ(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents,780,780)
 
-    for t, truncation_option in [truncation_option_1,truncation_option_2,truncation_option_3,truncation_option_4,truncation_option_5]:
+    for t, truncation_option in truncation_options:
         print ("Truncation Option " + str(t) + " = ")
         print ( repr(truncation_option) )
-
-    # np.save(outdir + "/truncation_option_1.npy",truncation_option_1)
-    # np.save(outdir + "/truncation_option_2.npy",truncation_option_2)
-    # np.save(outdir + "/truncation_option_3.npy",truncation_option_3)
-    # np.save(outdir + "/truncation_option_4.npy",truncation_option_4)
-    # np.save(outdir + "/truncation_option_5.npy",truncation_option_5)
     
     #Once we have the truncation values, need to find how many TCs are lost
     print ("Plotting histograms")
     #Fill a 2D histogram per bunch-crossing with N_TCs (maximum over bundles) 
     plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A",[truncation_option_1,truncation_option_2,truncation_option_3])
-    plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B",[truncation_option_1,truncation_option_2,truncation_option_3],[2,400/302,2])
+    plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B",[truncation_option_1,truncation_option_2,truncation_option_3],[2,400/302,2])
 
     #Don't want inclusive here to be region A, rather phigreater60
     plot_NTCs_Vs_ROverZ(phigreater60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",[truncation_option_4,truncation_option_5])
-    plot_NTCs_Vs_ROverZ(philess60_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",[truncation_option_4,truncation_option_5],[1,1])
+    plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",[truncation_option_4,truncation_option_5],[1,1])
 
     #Plot sum of truncated TCs over the sum of all TCs
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_1, 2, inclusive_hists[1], outdir + "/frac_option_1")
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], outdir + "/frac_option_2")
-    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], outdir + "/frac_option_3")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_1, 2, inclusive_hists[1], outdir + "/frac_option_1")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], outdir + "/frac_option_2")
+    plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], outdir + "/frac_option_3")
 
-    plot_frac_Vs_ROverZ( phigreater60_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_4, 1, inclusive_hists[1], outdir + "/frac_option_4")
-    plot_frac_Vs_ROverZ( phigreater60_bundled_lpgbthists_allevents, philess60_bundled_lpgbthists_allevents, truncation_option_5, 1, inclusive_hists[1], outdir + "/frac_option_5")
+    plot_frac_Vs_ROverZ( phidivisionX_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_4, 1, inclusive_hists[1], outdir + "/frac_option_4")
+    plot_frac_Vs_ROverZ( phidivisionX_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_5, 1, inclusive_hists[1], outdir + "/frac_option_5")
     
 
 
@@ -899,8 +910,6 @@ def plot_Truncation_tc_Pt(eventData, outdir = ".", ):
     with open(eventData, "rb") as filep:   
         data = pickle.load(filep)
 
-    print(data)
-        
     nbinsROverZ = len(data[0][0][0]) #42
     axis =  np.histogram( np.empty(0), bins = nbinsROverZ, range = (0.076,0.58) )[1]
 
@@ -921,42 +930,11 @@ def plot_Truncation_tc_Pt(eventData, outdir = ".", ):
         
         truncation_options_regionA.append(dataA_allevents)
         truncation_options_regionB.append(dataB_allevents)
-        
-    # dataA_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    # dataB_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-
-    
-    #Names for phi > 60 and phi < 60 indices
-#    dataA = 0
-#    dataB = 1
-
-    
-    # nbundles = len(bundled_lpgbthists_allevents[0][0]) #24
-    # nbins = len(bundled_lpgbthists_allevents[0][0][0]) #42
-    
-#    dataA_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-#    dataB_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-#
-    # for e,event in enumerate(bundled_lpgbthists_allevents):        
-    #     dataA_bundled_lpgbthists_allevents[e] = np.array(list(event[dataA].values()))
-    #     dataB_bundled_lpgbthists_allevents[e] = np.array(list(event[dataB].values()))
-
-
-    # regionA_Total_allevents,regionB_Total_allevents = loadFluctuationData(eventDataTotal)
-    # regionA_Truncated_allevents,regionB_Truncated_allevents = loadFluctuationData(eventDataTruncated)
 
 
     #Sum over all events and bundles of TCs (in each R/Z bin) 
-    print ( truncation_options_regionA[0] )
-    
     totalsumA = np.sum( truncation_options_regionA[0] , axis=0 )
     totalsumB = np.sum( truncation_options_regionB[0] , axis=0 )
-    print ("totalsumA = ",totalsumA)
-    print ("totalsumB = ",totalsumB)
-
-    print ("truncsumA = ",np.sum( truncation_options_regionA[1] , axis=0 ))
-    print ("truncsumB = ",np.sum( truncation_options_regionB[1] , axis=0 ))
-
     
     #Loop over truncation options
     for t,(truncationA,truncationB) in enumerate(zip(truncation_options_regionA,truncation_options_regionB)):
@@ -997,6 +975,9 @@ def main():
         
     #Code to process the input root file,
     #and to get the bundle R/Z histograms per event
+    truncationConfig = None
+    if 'truncationConfig' in config.keys():
+        truncationConfig = config['truncationConfig']
 
     if (config['function']['checkFluctuations']):
         correctionConfig = None
@@ -1008,7 +989,7 @@ def main():
         if 'tcPtConfig' in subconfig.keys():
             tcPtConfig = subconfig['tcPtConfig']
 
-        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], tcPtConfig = tcPtConfig, correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'], beginEvent = subconfig['beginEvent'], endEvent = subconfig['endEvent'])
+        checkFluctuations(initial_state=subconfig['initial_state'], cmsswNtuple=subconfig['cmsswNtuple'], mappingFile=subconfig['mappingFile'], outputName=subconfig['outputName'], tcPtConfig = tcPtConfig, correctionConfig = correctionConfig, phisplitConfig = subconfig['phisplit'], truncationConfig = truncationConfig, save_tc_hists=subconfig['save_tc_hists'],beginEvent = subconfig['beginEvent'], endEvent = subconfig['endEvent'])
 
     #Plotting functions
     
@@ -1022,11 +1003,11 @@ def main():
         
     if (config['function']['studyTruncationOptions']):
         subconfig = config['studyTruncationOptions']
-        studyTruncationOptions(eventData = subconfig['eventData'],outdir = config['output_dir'], includePhi60 = subconfig['includePhi60'] )
+        studyTruncationOptions(eventData = subconfig['eventData'], options_to_study = subconfig['options_to_study'], truncationConfig = config['truncationConfig'], outdir = config['output_dir'] )
         
     if (config['function']['plot_Truncation_tc_Pt']):
         subconfig = config['plot_Truncation_tc_Pt']
-        plot_Truncation_tc_Pt(eventData = subconfig['eventData'],outdir = config['output_dir'] )
+        plot_Truncation_tc_Pt(eventData = subconfig['eventData'], outdir = config['output_dir'] )
 
     
 main()

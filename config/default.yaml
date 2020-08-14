@@ -4,7 +4,8 @@ function:
   plot_lpGBTLoads: False
   plot_ModuleLoads: False
   produce_AllocationFile: False               
-
+  produce_nTCsPerModuleHists: False
+  
 print_level: 0
 output_dir: .
 
@@ -68,3 +69,9 @@ produce_AllocationFile:
   MappingFile: data/FeMappingV7.txt
   allocation: bundles_job_7058.npy
   minigroup_type: 'minimal'
+
+produce_nTCsPerModuleHists:
+  MappingFile: data/FeMappingV7.txt
+  allocation: bundles_job_7058.npy
+  minigroup_type: 'minimal'
+  CMSSW_ModuleHists: TCs_20200814.root
