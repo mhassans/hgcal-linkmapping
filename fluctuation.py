@@ -502,7 +502,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             with open( outputName + "_sumpt.txt", "wb") as filep:
                 pickle.dump(bundled_pt_hists_allevents, filep)
         if save_tc_hists:
-            outfile = ROOT.TFile("NTCs_v11_relval_ttbar_20200814.root","RECREATE")
+            outfile = ROOT.TFile(outputName + "_nTCs.root","RECREATE")
             for hist in nTCs_per_module.values():
                 hist.Write()
 
