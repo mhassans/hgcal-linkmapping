@@ -38,6 +38,14 @@ truncationConfig:
        23., 24., 21., 22., 25., 23., 19., 18., 23., 20., 23., 25., 22.,
        17., 17., 16., 18., 22., 14.,  6.,  6.,  5.,  5.,  5.,  3.,  3.,
         2.,  0.,  0.]
+  option4:
+    maxTCsA: 466
+    maxTCsB: 466
+    nLinks: 4
+  option5:
+    maxTCsA: 780
+    maxTCsB: 780
+    nLinks: 4
   
 checkFluctuations:  
   beginEvent: -1
@@ -46,7 +54,7 @@ checkFluctuations:
   cmsswNtuple: data/small_v11_relval_ttbar_200611.root
   outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
-  save_tc_hists: False
+  save_ntc_hists: False
   
   tcPtConfig:
     #Set 'save_sum_tcPt' to be True if you want to save the sum of TC_pt, with different truncation options
@@ -74,7 +82,8 @@ plot_Truncation:
 
 studyTruncationOptions:
   eventData: data/alldata_neutrino_gun_2006022.txt
-  includePhi60: True
+  options_to_study: [1,2,3,4,5]
 
 plot_Truncation_tc_Pt:
   eventData: data/alldata_ttbar_200813_sumpt.txt
+  options_to_study: [1,2,3]    #Should correspond to the same options in the input file
