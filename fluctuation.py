@@ -753,7 +753,7 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
         truncation_values.append( getTruncationValuesRoverZ(regionA_bundled_lpgbthists_allevents[-1],regionB_bundled_lpgbthists_allevents[-1],truncation_options[-1]['maxTCsA'],truncation_options[-1]['maxTCsB']) )
                                   
     
-    for option,truncation in zip(truncation_options,truncation_values):
+    for option,truncation in zip(options_to_study,truncation_values):
         print ("Truncation Option " + str(option) + " = ")
         print ( repr(truncation) )
     
@@ -774,27 +774,18 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
             options_4links.append(truncation)
             options_4links_TCratio.append(option['maxTCsA']/option['maxTCsB'])
 
-                                  
-    plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_3links",options_3links)
-    plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_3links",options_3links,options_3links_TCratio)
+    if ( len(options_3links) > 0 ):                
+        plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_3links",options_3links)
+        plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_3links",options_3links,options_3links_TCratio)
 
-    #Don't want inclusive here to be region A, rather phidivisionX
-    plot_NTCs_Vs_ROverZ(phidivisionX_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",options_4links)
-    plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",options_4links,options_4links_TCratio)
+    if ( len(options_4links) > 0 ):                
+        #Don't want inclusive here to be region A, rather phidivisionX
+        plot_NTCs_Vs_ROverZ(phidivisionX_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",options_4links)
+        plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",options_4links,options_4links_TCratio)
 
     #Plot sum of truncated TCs over the sum of all TCs
-    
     for o,(option,values,regionA,regionB) in enumerate(zip(truncation_options,truncation_values,regionA_bundled_lpgbthists_allevents,regionB_bundled_lpgbthists_allevents)):
         plot_frac_Vs_ROverZ( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], outdir + "/frac_option_"+str(options_to_study[o]))
-
-
-
-    #     plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_2, 400/302, inclusive_hists[1], outdir + "/frac_option_2")
-    # plot_frac_Vs_ROverZ( inclusive_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_3, 2, inclusive_hists[1], outdir + "/frac_option_3")
-
-    # plot_frac_Vs_ROverZ( phidivisionX_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_4, 1, inclusive_hists[1], outdir + "/frac_option_4")
-    # plot_frac_Vs_ROverZ( phidivisionX_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents, truncation_option_5, 1, inclusive_hists[1], outdir + "/frac_option_5")
-    
 
 
 def plotTruncation(eventData, outdir = ".", includePhi60 = True):
