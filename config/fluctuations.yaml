@@ -77,8 +77,8 @@ checkFluctuations:
     type: per_roverz_bin
     
     splitfile: data/ROverZHistograms_v11_relval_ttbar_20200716.root
-    RegionA_fixvalue_min: 55 #degrees
-    RegionB_fixvalue_max: 55 #degrees
+    phidivisionX_fixvalue_min: 55 #degrees
+    phidivisionY_fixvalue_max: 55 #degrees
   
 plot_MeanMax:
   eventData: data/alldata_neutrino_gun_2006022.txt

@@ -154,11 +154,11 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
     truncation_values_loop = truncation_values.copy()
     TCratio_loop = TCratio.copy()
     nLinks_loop = nLinks.copy()
-
     truncation_values_loop.insert( 0, truncation_max )
     TCratio_loop.insert( 0, 1. )
     nLinks_loop.insert( 0, 4 )#The two phi divisions are saved independently, so both options can be recreated later
-    alldata = []
+
+    alldata = [] #Output list
 
     for a,(truncation,ratio,links) in enumerate(zip(truncation_values_loop,TCratio_loop,nLinks_loop)):
         
@@ -168,15 +168,12 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
         regionA_truncated_summed = np.zeros(len(roverzBinning)-1)
         regionB_truncated_summed = np.zeros(len(roverzBinning)-1)
         
-        #Output dicts
-        regionA_truncated = {}
-        regionB_truncated = {}
-        
         #Loop over each bundle
         for b in range(len(bundled_tc_Pt_rawdata[0])):
 
-            regionA = np.asarray(bundled_tc_Pt_rawdata[0][b])
-            regionB = np.asarray(bundled_tc_Pt_rawdata[1][b])
+            #Get lists of (r/z, pt) pairs
+            phidivisionX = np.asarray(bundled_tc_Pt_rawdata[0][b])
+            phidivisionY = np.asarray(bundled_tc_Pt_rawdata[1][b])
             inclusive = np.asarray(bundled_tc_Pt_rawdata[0][b] + bundled_tc_Pt_rawdata[1][b])
 
             #Find out how many TCs should be truncated
@@ -184,8 +181,8 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
             if links == 3:
                 digitised_regionA_rawdata = np.digitize(inclusive[:,0],roverzBinning)
             elif links == 4:
-                digitised_regionA_rawdata = np.digitize(regionA[:,0],roverzBinning)
-            digitised_regionB_rawdata = np.digitize(regionB[:,0],roverzBinning)
+                digitised_regionA_rawdata = np.digitize(phidivisionX[:,0],roverzBinning)
+            digitised_regionB_rawdata = np.digitize(phidivisionY[:,0],roverzBinning)
 
             sumPt_truncated_regionA = np.zeros(len(roverzBinning)-1)
             sumPt_truncated_regionB = np.zeros(len(roverzBinning)-1)
@@ -197,9 +194,10 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
                 if links == 3:
                     pt_values_regionA = inclusive[digitised_regionA_rawdata==roverz+1][:,1] #roverz+1 to convert from index to digitised bin number
                 elif links == 4:
-                    pt_values_regionA = regionA[digitised_regionA_rawdata==roverz+1][:,1] #roverz+1 to convert from index to digitised bin number
-                pt_values_regionB = regionB[digitised_regionB_rawdata==roverz+1][:,1] 
+                    pt_values_regionA = phidivisionX[digitised_regionA_rawdata==roverz+1][:,1] #roverz+1 to convert from index to digitised bin number
+                pt_values_regionB = phidivisionX[digitised_regionB_rawdata==roverz+1][:,1] 
 
+                #Get the number to be truncated in each region in an R/Z bin
                 number_truncated_regionA = int(max(0,len(pt_values_regionA)-truncation[roverz]))
                 if ( ratio.is_integer() ):
                     number_truncated_regionB = int(max(0,len(pt_values_regionB)-(np.ceil(truncation[roverz]/ratio))))#ceil rather than round in the cases ratio=1 or ratio=2 to make sure 0.5 goes to 1.0 (not default in python). 
@@ -210,25 +208,25 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
                 sum_truncated_regionA = 0
                 sum_truncated_regionB = 0
                 if number_truncated_regionA > 0:
+                    #Sort the pt_values array such that lower pT values are below number_truncated_regionA-1 and higher pT values are above
                     partition_regionA = pt_values_regionA[np.argpartition(pt_values_regionA, number_truncated_regionA-1)]#-1 to convert to index number 
+                    #Then sum the lower values
                     sum_truncated_regionA = np.cumsum(partition_regionA)[number_truncated_regionA-1]
                 if number_truncated_regionB > 0:
                     partition_regionB = pt_values_regionB[np.argpartition(pt_values_regionB, number_truncated_regionB-1)]#-1 to convert to index number 
                     sum_truncated_regionB = np.cumsum(partition_regionB)[number_truncated_regionB-1]
 
+                #Save the sum pT after truncation
                 total_sum_regionA = np.sum(pt_values_regionA)
                 total_sum_regionB = np.sum(pt_values_regionB)
 
-                #Save the total pT and truncated pT
                 sumPt_truncated_regionA[roverz] = total_sum_regionA - sum_truncated_regionA
                 sumPt_truncated_regionB[roverz] = total_sum_regionB - sum_truncated_regionB
-                
-            regionA_truncated[b] = sumPt_truncated_regionA
-            regionB_truncated[b] = sumPt_truncated_regionB
+
+            #Sum all bundles together at this stage
             regionA_truncated_summed+=sumPt_truncated_regionA
             regionB_truncated_summed+=sumPt_truncated_regionB
 
-        #Keep bundle-level data or not at this point
         bundled_pt_hists_truncated.append( regionA_truncated_summed.copy() )
         bundled_pt_hists_truncated.append( regionB_truncated_summed.copy() )
 
@@ -248,7 +246,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     #List of which minigroups are assigned to each bundle 
     init_state = np.hstack(np.load(initial_state,allow_pickle=True))
 
-    #Truncation values, if need to truncate based on E_T when running over ntuple    
+    #Load the truncation options, if need to truncate based on E_T when running over ntuple (save_sum_tcPt == True)
     truncation_options = []
     ABratios = []
     nLinks = []
@@ -285,31 +283,31 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     bundled_lpgbthists_allevents = []
     bundled_pt_hists_allevents = []
     
-    ROverZ_per_module_RegionA = {} #traditionally phi > 60 degrees
-    ROverZ_per_module_RegionB = {} #traditionally phi < 60 degrees
-    ROverZ_per_module_RegionA_tcPt = {} 
-    ROverZ_per_module_RegionB_tcPt = {} 
+    ROverZ_per_module_phidivisionX = {} #traditionally phi > 60 degrees
+    ROverZ_per_module_phidivisionY = {} #traditionally phi < 60 degrees
+    ROverZ_per_module_phidivisionX_tcPt = {} 
+    ROverZ_per_module_phidivisionY_tcPt = {} 
 
     nTCs_per_module = {}
 
-    #Value of split in phi (nominally 60 degrees)
+    #Value of split in phi (traditionally 60 degrees)
     if phisplitConfig == None:
-        phi_split_RegionA = np.full( nROverZBins, np.pi/3 )
-        phi_split_RegionB = np.full( nROverZBins, np.pi/3 )
+        phi_split_phidivisionX = np.full( nROverZBins, np.pi/3 )
+        phi_split_phidivisionY = np.full( nROverZBins, np.pi/3 )
     else:
         if phisplitConfig['type'] == "fixed":
-            phi_split_RegionA = np.full( nROverZBins, np.radians(phisplitConfig['RegionA_fixvalue_min']) )
-            phi_split_RegionB = np.full( nROverZBins, np.radians(phisplitConfig['RegionB_fixvalue_max']) )
+            phi_split_phidivisionX = np.full( nROverZBins, np.radians(phisplitConfig['phidivisionX_fixvalue_min']) )
+            phi_split_phidivisionY = np.full( nROverZBins, np.radians(phisplitConfig['phidivisionY_fixvalue_max']) )
         else:
             file_roverz_inclusive = ROOT.TFile(str(phisplitConfig['splitfile']),"READ")
             PhiVsROverZ_Total = file_roverz_inclusive.Get("ROverZ_Inclusive" )
-            split_indices_RegionA = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
-            split_indices_RegionB = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
-            phi_split_RegionA = np.zeros( nROverZBins )
-            phi_split_RegionB = np.zeros( nROverZBins )
-            for i,(idxA,idxB) in enumerate(zip(split_indices_RegionA, split_indices_RegionB)):
-                phi_split_RegionA[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxA))
-                phi_split_RegionB[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxB))
+            split_indices_phidivisionX = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
+            split_indices_phidivisionY = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
+            phi_split_phidivisionX = np.zeros( nROverZBins )
+            phi_split_phidivisionY = np.zeros( nROverZBins )
+            for i,(idxA,idxB) in enumerate(zip(split_indices_phidivisionX, split_indices_phidivisionY)):
+                phi_split_phidivisionX[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxA))
+                phi_split_phidivisionY[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxB))
 
     if save_ntc_hists:
         for i in range (15):
@@ -328,31 +326,31 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     for z in (-1,1):
         for sector in (0,1,2):
             key1 = (z,sector)
-            ROverZ_per_module_RegionA[key1] = {}
-            ROverZ_per_module_RegionB[key1] = {}
+            ROverZ_per_module_phidivisionX[key1] = {}
+            ROverZ_per_module_phidivisionY[key1] = {}
             if save_sum_tcPt:
-                ROverZ_per_module_RegionA_tcPt[key1] = {}
-                ROverZ_per_module_RegionB_tcPt[key1] = {}
+                ROverZ_per_module_phidivisionX_tcPt[key1] = {}
+                ROverZ_per_module_phidivisionY_tcPt[key1] = {}
 
             for i in range (15):
                 for j in range (15):
                     for k in range (1,53):
                         if  k < 28 and k%2 == 0:
                             continue
-                        ROverZ_per_module_RegionA[key1][0,i,j,k] = np.empty(0)
-                        ROverZ_per_module_RegionB[key1][0,i,j,k] = np.empty(0)
+                        ROverZ_per_module_phidivisionX[key1][0,i,j,k] = np.empty(0)
+                        ROverZ_per_module_phidivisionY[key1][0,i,j,k] = np.empty(0)
                         if save_sum_tcPt:
-                            ROverZ_per_module_RegionA_tcPt[key1][0,i,j,k] = [] #np.empty(0)
-                            ROverZ_per_module_RegionB_tcPt[key1][0,i,j,k] = [] #np.empty(0)
+                            ROverZ_per_module_phidivisionX_tcPt[key1][0,i,j,k] = [] #np.empty(0)
+                            ROverZ_per_module_phidivisionY_tcPt[key1][0,i,j,k] = [] #np.empty(0)
 
             for i in range (5):
                 for j in range (12):
                     for k in range (37,53):
-                        ROverZ_per_module_RegionA[key1][1,i,j,k] = np.empty(0)
-                        ROverZ_per_module_RegionB[key1][1,i,j,k] = np.empty(0)
+                        ROverZ_per_module_phidivisionX[key1][1,i,j,k] = np.empty(0)
+                        ROverZ_per_module_phidivisionY[key1][1,i,j,k] = np.empty(0)
                         if save_sum_tcPt:
-                            ROverZ_per_module_RegionA_tcPt[key1][0,i,j,k] = [] #np.empty(0)
-                            ROverZ_per_module_RegionB_tcPt[key1][0,i,j,k] = [] #np.empty(0)
+                            ROverZ_per_module_phidivisionX_tcPt[key1][0,i,j,k] = [] #np.empty(0)
+                            ROverZ_per_module_phidivisionY_tcPt[key1][0,i,j,k] = [] #np.empty(0)
     
     try:
         for entry,event in enumerate(tree):
@@ -371,17 +369,17 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             print ("Event number " + str(entry))
 
 
-            for key1 in ROverZ_per_module_RegionA.keys():
-                for key2 in ROverZ_per_module_RegionA[key1].keys():
-                    ROverZ_per_module_RegionA[key1][key2] = np.empty(0)
-                    ROverZ_per_module_RegionB[key1][key2] = np.empty(0)
+            for key1 in ROverZ_per_module_phidivisionX.keys():
+                for key2 in ROverZ_per_module_phidivisionX[key1].keys():
+                    ROverZ_per_module_phidivisionX[key1][key2] = np.empty(0)
+                    ROverZ_per_module_phidivisionY[key1][key2] = np.empty(0)
                     if save_sum_tcPt:
-                        ROverZ_per_module_RegionA_tcPt[key1][key2] = [] #np.empty(0)
-                        ROverZ_per_module_RegionB_tcPt[key1][key2] = [] #np.empty(0)
+                        ROverZ_per_module_phidivisionX_tcPt[key1][key2] = [] #np.empty(0)
+                        ROverZ_per_module_phidivisionY_tcPt[key1][key2] = [] #np.empty(0)
                         
             #Loop over list of trigger cells in a particular
             #event and fill R/Z histograms for each module
-            #for RegionA and RegionB (traditionally phi > 60 degrees and phi < 60 degrees respectively)
+            #for phidivisionX and phidivisionY (traditionally phi > 60 degrees and phi < 60 degrees respectively)
 
             #Check if tc_pt exists (needed to weight TCs by TC pT)
             eventzip = zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv)
@@ -401,17 +399,15 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     roverz_phi = getROverZPhi(x,y,z,sector)
                     roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
 
-                    if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
+                    if (roverz_phi[1] >= phi_split_phidivisionX[roverz_bin-1]):
                         #There should be no r/z values lower than 0.076
-                        ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+                        ROverZ_per_module_phidivisionX[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_phidivisionX[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         if save_sum_tcPt:
-                            #ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer],np.array([abs(roverz_phi[0]),pt]))
-                            ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer].append( [abs(roverz_phi[0]),pt] )
-                    if (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
-                        ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
+                            ROverZ_per_module_phidivisionX_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer].append( [abs(roverz_phi[0]),pt] )
+                    if (roverz_phi[1] < phi_split_phidivisionY[roverz_bin-1]):
+                        ROverZ_per_module_phidivisionY[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_phidivisionY[np.sign(z),sector][0,uv[0],uv[1],layer],abs(roverz_phi[0]))
                         if save_sum_tcPt:
-                            #ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer] = np.append(ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer],np.array([abs(roverz_phi[0]),pt]))
-                            ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer].append( [abs(roverz_phi[0]),pt] )
+                            ROverZ_per_module_phidivisionY_tcPt[np.sign(z),sector][0,uv[0],uv[1],layer].append( [abs(roverz_phi[0]),pt] )
                         
                 else: #Scintillator  
                     eta = cellu
@@ -420,35 +416,33 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     roverz_phi = getROverZPhi(x,y,z,sector)
                     roverz_bin = np.argmax( roverzBinning > abs(roverz_phi[0]) )
                     
-                    if (roverz_phi[1] >= phi_split_RegionA[roverz_bin-1]):
-                        ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
+                    if (roverz_phi[1] >= phi_split_phidivisionX[roverz_bin-1]):
+                        ROverZ_per_module_phidivisionX[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_phidivisionX[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
                         if save_sum_tcPt:
-                            #ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],np.array([abs(roverz_phi[0]),pt]))
-                            ROverZ_per_module_RegionA_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer].append( [abs(roverz_phi[0]),pt] )
-                    if (roverz_phi[1] < phi_split_RegionB[roverz_bin-1]):
-                        ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionB[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
+                            ROverZ_per_module_phidivisionX_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer].append( [abs(roverz_phi[0]),pt] )
+                    if (roverz_phi[1] < phi_split_phidivisionY[roverz_bin-1]):
+                        ROverZ_per_module_phidivisionY[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_phidivisionY[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],abs(roverz_phi[0]))
                         if save_sum_tcPt:
-                            #ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer] = np.append(ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer],np.array([abs(roverz_phi[0]),pt]))
-                            ROverZ_per_module_RegionB_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer].append( [abs(roverz_phi[0]),pt] )
+                            ROverZ_per_module_phidivisionY_tcPt[np.sign(z),sector][1,etaphi[0],etaphi[1],layer].append( [abs(roverz_phi[0]),pt] )
             #Bin the TC module data
-            module_hists_phigreater60 = {}
-            module_hists_philess60 = {}
+            module_hists_phidivisionX = {}
+            module_hists_phidivisionY = {}
 
-            for key1,value1 in ROverZ_per_module_RegionA.items():
-                module_hists_phigreater60[key1] = {}
+            for key1,value1 in ROverZ_per_module_phidivisionX.items():
+                module_hists_phidivisionX[key1] = {}
                 for key2,value2 in value1.items():
-                    module_hists_phigreater60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
+                    module_hists_phidivisionX[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
 
-            for key1,value1 in ROverZ_per_module_RegionB.items():
-                module_hists_philess60[key1] = {}
+            for key1,value1 in ROverZ_per_module_phidivisionY.items():
+                module_hists_phidivisionY[key1] = {}
                 for key2,value2 in value1.items():
-                    module_hists_philess60[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
+                    module_hists_phidivisionY[key1][key2] = np.histogram( value2, bins = nROverZBins, range = (0.076,0.58) )[0]
 
             for z in (-1,1):
                 for sector in (0,1,2):
                         
                     #the module hists are a numpy array of size 42
-                    module_hists = [module_hists_phigreater60[z,sector],module_hists_philess60[z,sector]]
+                    module_hists = [module_hists_phidivisionX[z,sector],module_hists_phidivisionY[z,sector]]
                     
                     #Apply geometry corrections
                     applyGeometryCorrectionsNumpy( module_hists, modulesToCorrect )
@@ -468,7 +462,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     
                     #Collect the individual TC Pt values for a given minigroup, with the view to truncate and sum
                     if ( save_sum_tcPt ):
-                        tc_Pt_rawdata = [ROverZ_per_module_RegionA_tcPt[z,sector],ROverZ_per_module_RegionB_tcPt[z,sector]]
+                        tc_Pt_rawdata = [ROverZ_per_module_phidivisionX_tcPt[z,sector],ROverZ_per_module_phidivisionY_tcPt[z,sector]]
                         applyGeometryCorrectionsTCPtRawData( tc_Pt_rawdata, modulesToCorrect )
                         minigroup_tc_Pt_rawdata = getMiniGroupTCPtRawData(tc_Pt_rawdata,minigroups_modules)
                         bundled_tc_Pt_rawdata = getBundledTCPtRawData(minigroup_tc_Pt_rawdata,bundles)
@@ -696,27 +690,29 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
 
 def loadFluctuationData(eventData):
     #Load the per-event flucation data produced using 'checkFluctuations'
-    #Return two arrays (for regions A and B) containing for each event and
-    #bundle, the number of TCs in each R/Z bin
+    #Return two arrays (for phi divisions X and Y) containing for each event and
+    #bundle, the number of TCs in each R/Z bin]
+    #For 3-link options RegionA = phidivisionX+phidivisionY, for the 4-link
+    #options RegionA = phidivisionX. In both cases RegionB = phidivisionY
     
     with open(eventData, "rb") as filep:   
         bundled_lpgbthists_allevents = pickle.load(filep)
     
-    #Names for phi > 60 and phi < 60 indices
-    dataA = 0
-    dataB = 1
+    #Names for phi > split_value and phi < split_value indices
+    dataX = 0
+    dataY = 1
 
     nbundles = len(bundled_lpgbthists_allevents[0][0]) #24
     nbins = len(bundled_lpgbthists_allevents[0][0][0]) #42
     
-    dataA_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
-    dataB_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    dataX_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
+    dataY_bundled_lpgbthists_allevents = np.empty((len(bundled_lpgbthists_allevents),nbundles,nbins))
 
     for e,event in enumerate(bundled_lpgbthists_allevents):        
-        dataA_bundled_lpgbthists_allevents[e] = np.array(list(event[dataA].values()))
-        dataB_bundled_lpgbthists_allevents[e] = np.array(list(event[dataB].values()))
+        dataX_bundled_lpgbthists_allevents[e] = np.array(list(event[dataX].values()))
+        dataY_bundled_lpgbthists_allevents[e] = np.array(list(event[dataY].values()))
 
-    return dataA_bundled_lpgbthists_allevents,dataB_bundled_lpgbthists_allevents
+    return dataX_bundled_lpgbthists_allevents,dataY_bundled_lpgbthists_allevents
     
 def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir = "."):
     
