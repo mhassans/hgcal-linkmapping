@@ -628,7 +628,7 @@ def plot_NTCs_Vs_ROverZ(inputdata,axis,savename,truncation_curves=None,scaling=N
     pl.savefig( savename + ".png" )
     pl.clf()
 
-def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, savename ):
+def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, title, savename ):
 
     #Sum over all events and bundles of TCs (in each R/Z bin) 
     totalsumA = np.sum( dataA , axis=(0,1) )
@@ -647,7 +647,8 @@ def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, savename
     pl.step(axis,np.append( ratioB , ratioB[-1] ),color='orange',linewidth='1', where = 'post', label='data B')
     pl.xlabel('r/z')
     pl.ylabel('Sum truncated TCs / Sum all TCs')
-    pl.ylim((0.8,1.05))
+    pl.title(title)
+    pl.ylim((0.6,1.05))
     pl.legend()
     pl.savefig( savename + ".png" )
     pl.clf()
@@ -784,8 +785,8 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
         plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",options_4links,options_4links_TCratio)
 
     #Plot sum of truncated TCs over the sum of all TCs
-    for o,(option,values,regionA,regionB) in enumerate(zip(truncation_options,truncation_values,regionA_bundled_lpgbthists_allevents,regionB_bundled_lpgbthists_allevents)):
-        plot_frac_Vs_ROverZ( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], outdir + "/frac_option_"+str(options_to_study[o]))
+    for (study_num,option,values,regionA,regionB) in zip(options_to_study,truncation_options,truncation_values,regionA_bundled_lpgbthists_allevents,regionB_bundled_lpgbthists_allevents):
+        plot_frac_Vs_ROverZ( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], "Sum No. TCs Option " + str(study_num), outdir + "/frac_option_"+str(study_num))
 
 
 def plotTruncation(eventData, outdir = ".", includePhi60 = True):
@@ -949,7 +950,6 @@ def plot_Truncation_tc_Pt(eventData, options_to_study, outdir = ".",  ):
         #Divide to get the fraction, taking into account division by zero
         if (options_to_study[t-1] < 4 ):
             ratioA = np.divide(   truncatedsum_A, totalsumInclusive , out=np.ones_like(truncatedsum_A), where=totalsumInclusive!=0 )
-            #ratioA = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A), where=totalsumA!=0 )
         else:
             ratioA = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A), where=totalsumA!=0 )
         ratioB = np.divide(   truncatedsum_B, totalsumB , out=np.ones_like(truncatedsum_B), where=totalsumB!=0 )
@@ -960,10 +960,10 @@ def plot_Truncation_tc_Pt(eventData, options_to_study, outdir = ".",  ):
 
         pl.xlabel('r/z')
         pl.ylabel('pT sum truncated TCs / pT sum all TCs')
-        #pl.ylim((0.8,1.05))
+        pl.title("Sum pT TCs Option " + str(options_to_study[t-1]) )
         pl.ylim((0.6,1.05))
         pl.legend()
-        pl.savefig( "pt_truncation_option_" + str(options_to_study[t-1]) + ".png" )
+        pl.savefig( outdir + "/pt_truncation_option_" + str(options_to_study[t-1]) + ".png" )
         pl.clf()
     
 def main():
