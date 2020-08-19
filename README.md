@@ -42,7 +42,7 @@ Python and C++ implementations of the mapping between 120 degree HGCal sectors i
 Takes as input a choice of lpgbt bundles, and bins the trigger cell data event by event
 There are several plotting scripts that investigate the impact of truncation on the number of trigger cells.
 Run using the config file `config/fluctuation.yaml`.
-Also the option to save the sum of (truncated or total) trigger cell p<sub>T<\sub> as a function of R/Z for each event.
+Also the option to save the sum of (truncated or total) trigger cell p<sub>T</sub> as a function of R/Z for each event.
 
 ## `plotbundles.py`
 
