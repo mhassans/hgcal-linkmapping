@@ -482,7 +482,7 @@ int main(int argc, char **argv){
     }
 
     file_out->Close();
-    
+
     //Create output csv
     std::ofstream fout;
     fout.open (average_tcs_sil);
