@@ -151,16 +151,17 @@ def main():
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
 
         inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input_inclusive")
+        inclusive.Add( inclusive_hists_input[1] )
         phidivisionX = inclusive_hists_input[0].Clone("inclusive_hists_input_phidivisionX")
         phidivisionY = inclusive_hists_input[1]
-        inclusive.Add( inclusive_hists_input[1] )
+
         inclusive.Scale(1./24)
         phidivisionX.Scale(1./24)
         phidivisionY.Scale(1./24)
 
         for i,(hist_phidivisionX,hist_phidivisionY) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
 
-            inclusive_hist = hist_phidivisionX.Clone("inclusive_hists_input_phidivisionX" + str(i))
+            inclusive_hist = hist_phidivisionX.Clone("bundle_hists_input_inclusive" + str(i))
 
             inclusive_hists.append(inclusive_hist)
             inclusive_hists[-1].Add( hist_phidivisionY )
