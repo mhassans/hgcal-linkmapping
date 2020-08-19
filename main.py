@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
-from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo,getModuleTCHists
+from process import getModuleHists, getlpGBTHists, getMiniGroupHists, getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists, getBundledlpgbtHistsRoot, calculateChiSquared
+from process import loadDataFile, getTCsPassing, getlpGBTLoadInfo, getHexModuleLoadInfo, getModuleTCHists
 from plotting import plot, plot2D
 from example_minigroup_configuration import example_minigroup_configuration
 
@@ -177,7 +177,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             if 'RegionB_fixvalue_max' in phisplitConfig.keys():
                 RegionB_fixvalue_max = phisplitConfig['RegionB_fixvalue_max']
 
-        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, RegionA_fixvalue_min = RegionA_fixvalue_min, RegionB_fixvalue_max = RegionB_fixvalue_max)
+        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, phidivisionX_fixvalue_min = phidivisionX_fixvalue_min, phidivisionY_fixvalue_max = phidivisionY_fixvalue_max)
 
     except EnvironmentError:
         print ( "File " + CMSSW_ModuleHists + " does not exist" )

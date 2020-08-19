@@ -134,19 +134,19 @@ def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55):
 
     return split_indices
     
-def getModuleHists(HistFile, split = "fixed", RegionA_fixvalue_min = 55, RegionB_fixvalue_max = None):
-    #Region A and Region B refers to the traditional regions of phi>60 degrees and phi<60 degrees respectively.
+def getModuleHists(HistFile, split = "fixed", phidivisionX_fixvalue_min = 55, phidivisionY_fixvalue_max = None):
+    #phidivisionX and phidivisionY refer to the traditional regions of phi>60 degrees and phi<60 degrees respectively.
     #Renamed such that their definitions can be more flexible
 
     #Split in phi is either 'fixed' (set at fixvalue in degrees)
     #or 'per_roverz_bin' in which case the split will be taken
     #at the mean point in phi in each R/Z bin (inclusive over all events)
 
-    #If split is 'fixed' Region A is lower-bounded by 'RegionA_fixvalue_min', with no upper bound
-    #Region B is upper-bounded by 'RegionB_fixvalue_max'
-    #(or 'RegionA_fixvalue_min' if 'RegionB_fixvalue_max' is not set), with no lower bound
-    if ( RegionB_fixvalue_max == None ):
-        RegionB_fixvalue_max = RegionA_fixvalue_min
+    #If split is 'fixed' phidivisionX is lower-bounded by 'phidivisionX_fixvalue_min', with no upper bound
+    #phidivisionY is upper-bounded by 'phidivisionY_fixvalue_max'
+    #(or 'phidivisionX_fixvalue_min' if 'phidivisionY_fixvalue_max' is not set), with no lower bound
+    if ( phidivisionY_fixvalue_max == None ):
+        phidivisionY_fixvalue_max = phidivisionX_fixvalue_min
     
     module_hists = []
     inclusive_hists = []
@@ -164,27 +164,27 @@ def getModuleHists(HistFile, split = "fixed", RegionA_fixvalue_min = 55, RegionB
     #Could either be constant with R/Z, or different for each R/Z bin 
 
     #Gives the bin number, whose low edge is the splitting point
-    split_indices_RegionA = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = RegionA_fixvalue_min)
-    split_indices_RegionB = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = RegionB_fixvalue_max)
+    split_indices_DivisionX = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = phidivisionX_fixvalue_min)
+    split_indices_DivisionY = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = phidivisionY_fixvalue_max)
 
-    projectionX_PhiRegionA = PhiVsROverZ.ProjectionX( "ROverZ_PhiRegionA" )
-    projectionX_PhiRegionB = PhiVsROverZ.ProjectionX( "ROverZ_PhiRegionB" )
-    projectionX_PhiRegionA.Reset()
-    projectionX_PhiRegionB.Reset()
+    projectionX_PhiDivisionX = PhiVsROverZ.ProjectionX( "ROverZ_PhiDivisionX" )
+    projectionX_PhiDivisionY = PhiVsROverZ.ProjectionX( "ROverZ_PhiDivisionY" )
+    projectionX_PhiDivisionX.Reset()
+    projectionX_PhiDivisionY.Reset()
 
     #Get an independent projection for each R/Z bin
     for x in range(1,PhiVsROverZ.GetNbinsX()+1):
         error = ctypes.c_double(-1)
-        projectionX_PhiRegionA.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_RegionA[x-1]),int(nBinsPhi),error))
-        projectionX_PhiRegionA.SetBinError(x,error.value)
-        projectionX_PhiRegionB.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_RegionB[x-1]-1),error))
-        projectionX_PhiRegionB.SetBinError(x,error.value)
+        projectionX_PhiDivisionX.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_DivisionX[x-1]),int(nBinsPhi),error))
+        projectionX_PhiDivisionX.SetBinError(x,error.value)
+        projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
+        projectionX_PhiDivisionY.SetBinError(x,error.value)
         
-    inclusive_hists.append(projectionX_PhiRegionA)
-    inclusive_hists.append(projectionX_PhiRegionB)
+    inclusive_hists.append(projectionX_PhiDivisionX)
+    inclusive_hists.append(projectionX_PhiDivisionY)
     
-    phiRegionA = {}
-    phiRegionB = {}
+    phiDivisionX = {}
+    phiDivisionY = {}
     
     for i in range (15): #u
         for j in range (15): #v
@@ -195,21 +195,21 @@ def getModuleHists(HistFile, split = "fixed", RegionA_fixvalue_min = 55, RegionB
                 PhiVsROverZ = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
 
-                projectionX_PhiRegionA = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiRegionA" )
-                projectionX_PhiRegionB = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiRegionB" )
-                projectionX_PhiRegionA.Reset()
-                projectionX_PhiRegionB.Reset()
+                projectionX_PhiDivisionX = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionX" )
+                projectionX_PhiDivisionY = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionY" )
+                projectionX_PhiDivisionX.Reset()
+                projectionX_PhiDivisionY.Reset()
 
                 #Get an independent projection for each R/Z bin
                 for x in range(1,PhiVsROverZ.GetNbinsX()+1):
                     error = ctypes.c_double(-1)
-                    projectionX_PhiRegionA.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_RegionA[x-1]),int(nBinsPhi),error))
-                    projectionX_PhiRegionA.SetBinError(x,error.value)
-                    projectionX_PhiRegionB.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_RegionB[x-1]-1),error))
-                    projectionX_PhiRegionB.SetBinError(x,error.value)
+                    projectionX_PhiDivisionX.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_DivisionX[x-1]),int(nBinsPhi),error))
+                    projectionX_PhiDivisionX.SetBinError(x,error.value)
+                    projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
+                    projectionX_PhiDivisionY.SetBinError(x,error.value)
                 
-                phiRegionA[0,i,j,k] = projectionX_PhiRegionA
-                phiRegionB[0,i,j,k] = projectionX_PhiRegionB
+                phiDivisionX[0,i,j,k] = projectionX_PhiDivisionX
+                phiDivisionY[0,i,j,k] = projectionX_PhiDivisionY
 
     for i in range (5): #u
         for j in range (12): #v
@@ -218,25 +218,25 @@ def getModuleHists(HistFile, split = "fixed", RegionA_fixvalue_min = 55, RegionB
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
 
-                projectionX_PhiRegionA = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiRegionA" )
-                projectionX_PhiRegionB = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiRegionB" )
-                projectionX_PhiRegionA.Reset()
-                projectionX_PhiRegionB.Reset()
+                projectionX_PhiDivisionX = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionX" )
+                projectionX_PhiDivisionY = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionY" )
+                projectionX_PhiDivisionX.Reset()
+                projectionX_PhiDivisionY.Reset()
 
                 #Get an independent projection for each R/Z bin
                 for x in range(1,PhiVsROverZ.GetNbinsX()+1):
                     error = ctypes.c_double(-1)
-                    projectionX_PhiRegionA.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_RegionA[x-1]),int(nBinsPhi),error))
-                    projectionX_PhiRegionA.SetBinError(x,error.value)
-                    projectionX_PhiRegionB.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_RegionB[x-1]-1),error))
-                    projectionX_PhiRegionB.SetBinError(x,error.value)
+                    projectionX_PhiDivisionX.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_DivisionX[x-1]),int(nBinsPhi),error))
+                    projectionX_PhiDivisionX.SetBinError(x,error.value)
+                    projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
+                    projectionX_PhiDivisionY.SetBinError(x,error.value)
                     
-                phiRegionA[1,i,j,k] = projectionX_PhiRegionA
-                phiRegionB[1,i,j,k] = projectionX_PhiRegionB
+                phiDivisionX[1,i,j,k] = projectionX_PhiDivisionX
+                phiDivisionY[1,i,j,k] = projectionX_PhiDivisionY
 
 
-    module_hists.append(phiRegionA)
-    module_hists.append(phiRegionB)
+    module_hists.append(phiDivisionX)
+    module_hists.append(phiDivisionY)
             
     return inclusive_hists,module_hists
 

@@ -7,11 +7,12 @@ npy_configuration:
   phisplit:
     #How to split in phi, either 'per_roverz_bin' (midpoint splits taken from CMSSW_ModuleHists file) or 'fixed'
     #If 'fixed' need to provide split values in degrees,
-    #i.e. fixed point in phi at which the split should occur: 'RegionA_fixvalue_min' and #RegionB_fixvalue_max'
+    #i.e. fixed point in phi at which the split should occur: 'phidivisionX_fixvalue_min' and #phidivisionY_fixvalue_max'
     #'per_roverz_bin', 'fixed'
     type: per_roverz_bin
-    RegionA_fixvalue_min: 55 #degrees
-    RegionB_fixvalue_max: 55 #degrees
+    #type: fixed
+    phidivisionX_fixvalue_min: 30 #degrees
+    phidivisionY_fixvalue_max: 90 #degrees
 
 corrections:
   ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'
