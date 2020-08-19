@@ -74,4 +74,4 @@ produce_nTCsPerModuleHists:
   MappingFile: data/FeMappingV7.txt
   allocation: bundles_job_7058.npy
   minigroup_type: 'minimal'
-  CMSSW_ModuleHists: TCs_20200814.root
+  CMSSW_ModuleHists: data/nTCs_v11_relval_ttbar_20200814.root
