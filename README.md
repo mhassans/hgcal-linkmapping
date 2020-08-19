@@ -30,6 +30,8 @@ Contains the helper functions required for each function in `main.py`
 ## `extract_data.cxx`
 
 Prepares the input for `process.py`. Takes a CMSSW output root file as input and produces a .csv file.
+Takes a json config file as input (default in `config/extract_data.json`).
+Run like `make; ./extract_data.cxx config/extract_data.json;`
 
 ## `rotate.py` and `rotate.cxx`
 
@@ -39,7 +41,8 @@ Python and C++ implementations of the mapping between 120 degree HGCal sectors i
 
 Takes as input a choice of lpgbt bundles, and bins the trigger cell data event by event
 There are several plotting scripts that investigate the impact of truncation on the number of trigger cells.
-Run using the config file `config/fluctuation.yaml`
+Run using the config file `config/fluctuation.yaml`.
+Also the option to save the sum of (truncated or total) trigger cell p<sub>T</sub> as a function of R/Z for each event.
 
 ## `plotbundles.py`
 

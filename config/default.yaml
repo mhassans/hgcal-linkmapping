@@ -2,8 +2,10 @@ function:
   study_mapping: False
   check_for_missing_modules: True
   plot_lpGBTLoads: False
-  plot_ModuleLoads: False               
-
+  plot_ModuleLoads: False
+  produce_AllocationFile: False               
+  produce_nTCsPerModuleHists: False
+  
 print_level: 0
 output_dir: .
 
@@ -27,6 +29,15 @@ study_mapping:
   minigroup_type: 'minimal'
 
   include_errors_in_chi2: False
+
+  phisplit:
+    #How to split in phi, either 'per_roverz_bin' (midpoint splits taken from CMSSW_ModuleHists file) or 'fixed'
+    #If 'fixed' need to provide split values in degrees,
+    #i.e. fixed point in phi at which the split should occur: 'phidivisionX_fixvalue_min' and #phidivisionY_fixvalue_max'
+    #'per_roverz_bin', 'fixed'
+    type: per_roverz_bin
+    phidivisionX_fixvalue_min: 55 #degrees
+    phidivisionY_fixvalue_max: 55 #degrees
 
 corrections:
   ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'
@@ -53,3 +64,14 @@ plot_ModuleLoads:
   MappingFile: data/FeMappingV7.txt
   CMSSW_Silicon: "data/average_tcs_sil_v11_relval_ttbar_20200611.csv"
   CMSSW_Scintillator: "data/average_tcs_scin_v11_relval_ttbar_20200611.csv"
+
+produce_AllocationFile:
+  MappingFile: data/FeMappingV7.txt
+  allocation: bundles_job_7058.npy
+  minigroup_type: 'minimal'
+
+produce_nTCsPerModuleHists:
+  MappingFile: data/FeMappingV7.txt
+  allocation: bundles_job_7058.npy
+  minigroup_type: 'minimal'
+  CMSSW_ModuleHists: data/nTCs_v11_relval_ttbar_20200814.root

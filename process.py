@@ -87,8 +87,30 @@ def getModuleHists1D(HistFile):
             
     return inclusive_hists,module_hists
 
+#Function to read TC histograms file with 1D histograms
+def getModuleTCHists(HistFile):
 
-def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55 ):
+    module_hists = {}
+    
+    infiles.append(ROOT.TFile.Open(HistFile,"READ"))
+
+    for i in range (15): #u
+        for j in range (15): #v
+            for k in range (53):#layer
+                if ( k < 28 and k%2 == 0 ):
+                    continue
+                module_hists[0,i,j,k] = infiles[-1].Get("nTCs_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+
+    for i in range (5): #u
+        for j in range (12): #v
+            for k in range (37,53):#layer
+                module_hists[1,i,j,k] = infiles[-1].Get("nTCs_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) )
+
+    return module_hists
+
+
+def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55):
     #If split is a fixed value in each R/Z bin, the fixvalue can be set, otherwise it is ignored
     #Fix value should be a multiple of 5/3 degrees, but if not is anyway forced to the closest multiple
 
@@ -112,10 +134,19 @@ def getPhiSplitIndices( PhiVsROverZ, split = "fixed", fixvalue = 55 ):
 
     return split_indices
     
-def getModuleHists(HistFile, split = "fixed", fixvalue = 55):
+def getModuleHists(HistFile, split = "fixed", phidivisionX_fixvalue_min = 55, phidivisionY_fixvalue_max = None):
+    #phidivisionX and phidivisionY refer to the traditional regions of phi>60 degrees and phi<60 degrees respectively.
+    #Renamed such that their definitions can be more flexible
+
     #Split in phi is either 'fixed' (set at fixvalue in degrees)
     #or 'per_roverz_bin' in which case the split will be taken
-    #at the mean point in phi in each R/Z bin (inclusive over all events) 
+    #at the mean point in phi in each R/Z bin (inclusive over all events)
+
+    #If split is 'fixed' phidivisionX is lower-bounded by 'phidivisionX_fixvalue_min', with no upper bound
+    #phidivisionY is upper-bounded by 'phidivisionY_fixvalue_max'
+    #(or 'phidivisionX_fixvalue_min' if 'phidivisionY_fixvalue_max' is not set), with no lower bound
+    if ( phidivisionY_fixvalue_max == None ):
+        phidivisionY_fixvalue_max = phidivisionX_fixvalue_min
     
     module_hists = []
     inclusive_hists = []
@@ -129,30 +160,31 @@ def getModuleHists(HistFile, split = "fixed", fixvalue = 55):
 
     nBinsPhi = PhiVsROverZ.GetNbinsY()    
 
-    #Get the phi indices where the split between "high" and "low phi should be
+    #Get the phi indices where the split between "high" and "low" phi should be
     #Could either be constant with R/Z, or different for each R/Z bin 
 
     #Gives the bin number, whose low edge is the splitting point
-    split_indices = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = fixvalue)
-    
-    projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiGreater60" )
-    projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_PhiLess60" )
-    projectionX_PhiGreater60.Reset()
-    projectionX_PhiLess60.Reset()
+    split_indices_DivisionX = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = phidivisionX_fixvalue_min)
+    split_indices_DivisionY = getPhiSplitIndices( PhiVsROverZ, split = split, fixvalue = phidivisionY_fixvalue_max)
+
+    projectionX_PhiDivisionX = PhiVsROverZ.ProjectionX( "ROverZ_PhiDivisionX" )
+    projectionX_PhiDivisionY = PhiVsROverZ.ProjectionX( "ROverZ_PhiDivisionY" )
+    projectionX_PhiDivisionX.Reset()
+    projectionX_PhiDivisionY.Reset()
 
     #Get an independent projection for each R/Z bin
     for x in range(1,PhiVsROverZ.GetNbinsX()+1):
         error = ctypes.c_double(-1)
-        projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
-        projectionX_PhiGreater60.SetBinError(x,error.value)
-        projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
-        projectionX_PhiLess60.SetBinError(x,error.value)
+        projectionX_PhiDivisionX.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_DivisionX[x-1]),int(nBinsPhi),error))
+        projectionX_PhiDivisionX.SetBinError(x,error.value)
+        projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
+        projectionX_PhiDivisionY.SetBinError(x,error.value)
 
-    inclusive_hists.append(projectionX_PhiGreater60)
-    inclusive_hists.append(projectionX_PhiLess60)
+    inclusive_hists.append(projectionX_PhiDivisionX)
+    inclusive_hists.append(projectionX_PhiDivisionY)
     
-    phiGreater60 = {}
-    phiLess60 = {}
+    phiDivisionX = {}
+    phiDivisionY = {}
     
     for i in range (15): #u
         for j in range (15): #v
@@ -161,24 +193,23 @@ def getModuleHists(HistFile, split = "fixed", fixvalue = 55):
                     continue
                 
                 PhiVsROverZ = infiles[-1].Get("ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) )
-                #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
 
-                projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60" )
-                projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60" )
-                projectionX_PhiGreater60.Reset()
-                projectionX_PhiLess60.Reset()
+                projectionX_PhiDivisionX = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionX" )
+                projectionX_PhiDivisionY = PhiVsROverZ.ProjectionX( "ROverZ_silicon_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionY" )
+                projectionX_PhiDivisionX.Reset()
+                projectionX_PhiDivisionY.Reset()
 
                 #Get an independent projection for each R/Z bin
                 for x in range(1,PhiVsROverZ.GetNbinsX()+1):
                     error = ctypes.c_double(-1)
-                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
-                    projectionX_PhiGreater60.SetBinError(x,error.value)
-                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
-                    projectionX_PhiLess60.SetBinError(x,error.value)
+                    projectionX_PhiDivisionX.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_DivisionX[x-1]),int(nBinsPhi),error))
+                    projectionX_PhiDivisionX.SetBinError(x,error.value)
+                    projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
+                    projectionX_PhiDivisionY.SetBinError(x,error.value)
 
-                phiGreater60[0,i,j,k] = projectionX_PhiGreater60
-                phiLess60[0,i,j,k] = projectionX_PhiLess60
+                phiDivisionX[0,i,j,k] = projectionX_PhiDivisionX
+                phiDivisionY[0,i,j,k] = projectionX_PhiDivisionY
 
     for i in range (5): #u
         for j in range (12): #v
@@ -187,25 +218,25 @@ def getModuleHists(HistFile, split = "fixed", fixvalue = 55):
                 #phi<60 is half the total number of bins in the y-dimension, i.e. for 12 bins (default) would be 6
                 nBinsPhi = PhiVsROverZ.GetNbinsY()
 
-                projectionX_PhiGreater60 = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiGreater60" )
-                projectionX_PhiLess60 = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiLess60" )
-                projectionX_PhiGreater60.Reset()
-                projectionX_PhiLess60.Reset()
+                projectionX_PhiDivisionX = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionX" )
+                projectionX_PhiDivisionY = PhiVsROverZ.ProjectionX( "ROverZ_scintillator_"+str(i)+"_"+str(j)+"_"+str(k) +"_PhiDivisionY" )
+                projectionX_PhiDivisionX.Reset()
+                projectionX_PhiDivisionY.Reset()
 
                 #Get an independent projection for each R/Z bin
                 for x in range(1,PhiVsROverZ.GetNbinsX()+1):
                     error = ctypes.c_double(-1)
-                    projectionX_PhiGreater60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices[x-1]),int(nBinsPhi),error))
-                    projectionX_PhiGreater60.SetBinError(x,error.value)
-                    projectionX_PhiLess60.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices[x-1]-1),error))
-                    projectionX_PhiLess60.SetBinError(x,error.value)
+                    projectionX_PhiDivisionX.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,int(split_indices_DivisionX[x-1]),int(nBinsPhi),error))
+                    projectionX_PhiDivisionX.SetBinError(x,error.value)
+                    projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
+                    projectionX_PhiDivisionY.SetBinError(x,error.value)
                     
-                phiGreater60[1,i,j,k] = projectionX_PhiGreater60
-                phiLess60[1,i,j,k] = projectionX_PhiLess60
+                phiDivisionX[1,i,j,k] = projectionX_PhiDivisionX
+                phiDivisionY[1,i,j,k] = projectionX_PhiDivisionY
 
 
-    module_hists.append(phiGreater60)
-    module_hists.append(phiLess60)
+    module_hists.append(phiDivisionX)
+    module_hists.append(phiDivisionY)
             
     return inclusive_hists,module_hists
 
@@ -420,6 +451,34 @@ def getlpGBTHists(data, module_hists):
         lpgbt_hists.append(temp)
     
     return lpgbt_hists
+
+def getMiniModuleGroups(data,minigroups_swap):
+
+    minigroups_modules = {}
+    
+    for minigroup_id,lpgbts in minigroups_swap.items():
+
+        module_list = []
+
+        for lpgbt in lpgbts:
+
+            data_list = data[ ((data['TPGId1']==lpgbt) | (data['TPGId2']==lpgbt)) ]
+
+            for index, row in data_list.iterrows():
+
+                if ( row['density']==2 ):
+                    mod = [1, row['u'], row['v'], row['layer']]
+                else:
+                    mod = [0, row['u'], row['v'], row['layer']]
+
+                if mod not in module_list:
+                    module_list.append(mod)
+
+        minigroups_modules[minigroup_id] = module_list
+        
+    return minigroups_modules
+    
+
 
 def getMinilpGBTGroups(data, minigroup_type="minimal"):
 

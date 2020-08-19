@@ -17,8 +17,7 @@ def print_numpy_plot(hists,plotname):
         numpy_hists.append( hist2array(hist) )
     
     for bundle in numpy_hists:
-        #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
-        pl.step((inclusive_hists[1])[:-1], bundle )
+        pl.step((inclusive_hists[1])[:-1], np.append(bundle,bundle[-1]), where = 'post' )
 
     pl.ylim((0,1100000))
     pl.savefig( plotname + ".png" )
@@ -83,10 +82,12 @@ def main():
     filein = ROOT.TFile("lpgbt_10.root")
     
     inclusive_hists = []
-    phi60_hists = []
+    phidivisionX_hists = []
+    phidivisionY_hists = []
     inclusive_hists_ratio = []
-    inclusive_hists_ratio_to_phi60 = []
-    phi60_hists_ratio = []
+    inclusive_hists_ratio_to_phidivisionX = []
+    phidivisionX_hists_ratio = []
+    phidivisionY_hists_ratio = []
 
     #Load config file if exists,
     #Otherwise assume .root file input
@@ -118,13 +119,27 @@ def main():
         
         init_state = np.hstack(np.load(filein_str,allow_pickle=True))
         MappingFile = config['npy_configuration']['mappingFile']
-        CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists'] 
+        CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists']
+        phisplitConfig = None
+        if 'phisplit' in config['npy_configuration'].keys():
+            phisplitConfig = config['npy_configuration']['phisplit']
 
         data = loadDataFile(MappingFile) #dataframe
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
-        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
-        #inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = "fixed", fixvalue = 55)
+        #Configuration for how to divide TCs into phidivisionX and phidivisionY (traditionally phi > 60 and phi < 60)
+        split = "per_roverz_bin"
+        phidivisionX_fixvalue_min = 55
+        phidivisionY_fixvalue_max = None
+        
+        if phisplitConfig != None:
+            split = phisplitConfig['type']
+            if 'phidivisionX_fixvalue_min' in phisplitConfig.keys():
+                phidivisionX_fixvalue_min = phisplitConfig['phidivisionX_fixvalue_min']
+            if 'phidivisionY_fixvalue_max' in phisplitConfig.keys():
+                phidivisionY_fixvalue_max = phisplitConfig['phidivisionY_fixvalue_max']
+
+        inclusive_hists_input,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, phidivisionX_fixvalue_min = phidivisionX_fixvalue_min, phidivisionY_fixvalue_max = phidivisionY_fixvalue_max)
         if 'corrections' in config.keys():
             if config['corrections'] != None:
                 print ( "Applying geometry corrections" )
@@ -135,25 +150,35 @@ def main():
         bundles = getBundles(minigroups_swap,init_state)
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
 
-        inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input0")
+        inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input_inclusive")
         inclusive.Add( inclusive_hists_input[1] )
-        phi60 = inclusive_hists_input[1]
-        inclusive.Scale(1./24)
-        phi60.Scale(1./24)
+        phidivisionX = inclusive_hists_input[0].Clone("inclusive_hists_input_phidivisionX")
+        phidivisionY = inclusive_hists_input[1]
 
-        for i,(hist_inc,hist_phi60) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
-            inclusive_hists.append(hist_inc)
-            inclusive_hists[-1].Add( hist_phi60 )
+        inclusive.Scale(1./24)
+        phidivisionX.Scale(1./24)
+        phidivisionY.Scale(1./24)
+
+        for i,(hist_phidivisionX,hist_phidivisionY) in enumerate(zip(bundled_hists[0].values(),bundled_hists[1].values())):
+
+            inclusive_hist = hist_phidivisionX.Clone("bundle_hists_input_inclusive" + str(i))
+
+            inclusive_hists.append(inclusive_hist)
+            inclusive_hists[-1].Add( hist_phidivisionY )
             inclusive_hists_ratio.append( inclusive_hists[-1].Clone("inclusive_ratio_" + str(i) ) )
             inclusive_hists_ratio[-1].Divide(inclusive)
 
-            phi60_hists.append(hist_phi60)
-            phi60_hists_ratio.append(hist_phi60.Clone("phi60_ratio_" + str(i) ))
-            phi60_hists_ratio[-1].Divide(phi60)
+            phidivisionX_hists.append(hist_phidivisionX)
+            phidivisionX_hists_ratio.append(hist_phidivisionX.Clone("phidivisionX_ratio_" + str(i) ))
+            phidivisionX_hists_ratio[-1].Divide(phidivisionX)
+            
+            phidivisionY_hists.append(hist_phidivisionY)
+            phidivisionY_hists_ratio.append(hist_phidivisionY.Clone("phidivisionY_ratio_" + str(i) ))
+            phidivisionY_hists_ratio[-1].Divide(phidivisionY)
 
-            inclusive_hists_ratio_to_phi60.append(inclusive_hists[-1].Clone("inclusive_ratio_to_phi60_" + str(i) ))
-            inclusive_hists_ratio_to_phi60[-1].Divide(hist_phi60)
-            inclusive_hists_ratio_to_phi60[-1].SetLineColor(1+i)
+            inclusive_hists_ratio_to_phidivisionY.append(inclusive_hists[-1].Clone("inclusive_ratio_to_phidivisionY_" + str(i) ))
+            inclusive_hists_ratio_to_phidivisionY[-1].Divide(hist_phidivisionY)
+            inclusive_hists_ratio_to_phidivisionY[-1].SetLineColor(1+i)
 
         module_hists = None
         inclusive_hists_input = None
@@ -164,30 +189,39 @@ def main():
         bundled_hists = None
 
     elif useROOT:
-        phi60 = filein.Get("ROverZ_PhiLess60")
-        inclusive = filein.Get("ROverZ_PhiGreater60")
-        ROOT.TH1.Add(inclusive,phi60)
+        phidivisionX = filein.Get("ROverZ_PhiDivisionX")
+        phidivisionY = filein.Get("ROverZ_PhiDivisionY")
+        ROOT.TH1.Add(phidivisionX,phidivisionY)
 
         for i in range (24):
-            inclusive_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
-            phi60_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
-            ROOT.TH1.Add(inclusive_hists[-1],phi60_hists[-1])
+            phidivisionX_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_0") )
+            phidivisionY_hists.append( filein.Get("lpgbt_ROverZ_bundled_"+str(i)+"_1") )
+            inclusive_hists.append( phidivisionX_hists[-1].Clone("inclusive_hists_input_phidivisionX" + str(i)) )
+            
+            ROOT.TH1.Add(inclusive_hists[-1],phidivisionY_hists[-1])
             
             inclusive_hists_ratio.append (  inclusive_hists[-1].Clone ("inclusive_ratio_" + str(i)  )  )
-            phi60_hists_ratio.append (  phi60_hists[-1].Clone ("phi60_ratio_" + str(i)  )  )
-            inclusive_hists_ratio_to_phi60.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_phi60_" + str(i)  )  )
+            phidivisionX_hists_ratio.append (  phidivisionX_hists[-1].Clone ("phidivisionX_ratio_" + str(i)  )  )
+            phidivisionY_hists_ratio.append (  phidivisionY_hists[-1].Clone ("phidivisionY_ratio_" + str(i)  )  )
+            
+            
+            inclusive_hists_ratio_to_phidivisionY.append (  inclusive_hists[-1].Clone ("inclusive_ratio_to_phidivisionY_" + str(i)  )  )
 
             inclusive_hists_ratio[-1].Divide( inclusive )            
-            phi60_hists_ratio[-1].Divide( phi60  )
-            inclusive_hists_ratio_to_phi60[-1].Divide( phi60  )            
+            phidivisionX_hists_ratio[-1].Divide( phidivisionX  )
+            phidivisionY_hists_ratio[-1].Divide( phidivisionY  )
+            inclusive_hists_ratio_to_phidivisionY[-1].Divide( phidivisionY  )            
 
         
     print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio,"inclusive")
-    print_ratio_plot(phi60,phi60_hists,phi60_hists_ratio,"phi60")
-    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phi60,"inclusive_to_phi60")
+    print_ratio_plot(phidivisionX,phidivisionX_hists,phidivisionX_hists_ratio,"phidivisionX")
+    print_ratio_plot(phidivisionY,phidivisionY_hists,phidivisionY_hists_ratio,"phidivisionY")
+
+    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phidivisionY,"inclusive_to_phidivisionY")
 
     print_numpy_plot( inclusive_hists, "numpy_inclusive")
-    print_numpy_plot( phi60_hists, "numpy_phi60")
+    print_numpy_plot( phidivisionX_hists, "numpy_phidivisionX")
+    print_numpy_plot( phidivisionY_hists, "numpy_phidivisionY")
 
 main()
     

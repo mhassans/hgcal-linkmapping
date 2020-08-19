@@ -4,6 +4,15 @@ output_dir: plots/20200619
 npy_configuration:
   mappingFile: data/FeMappingV7.txt
   CMSSW_ModuleHists: data/ROverZHistograms_v11_relval_neutrino_gun_20200611.root
+  phisplit:
+    #How to split in phi, either 'per_roverz_bin' (midpoint splits taken from CMSSW_ModuleHists file) or 'fixed'
+    #If 'fixed' need to provide split values in degrees,
+    #i.e. fixed point in phi at which the split should occur: 'phidivisionX_fixvalue_min' and #phidivisionY_fixvalue_max'
+    #'per_roverz_bin', 'fixed'
+    type: per_roverz_bin
+    #type: fixed
+    phidivisionX_fixvalue_min: 30 #degrees
+    phidivisionY_fixvalue_max: 90 #degrees
 
 corrections:
   ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'

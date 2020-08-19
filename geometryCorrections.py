@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from random import random
 
 def applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig ):
 
@@ -40,6 +41,32 @@ def applyNTCCorrection( module_hists, modulesToCorrect, useNumpy = False ):
                         print ("WARNING - Weird integral of r/z distribution after applying correction")
                         print (hist.GetEntries(),hist.Integral(),correction)
 
+#Duplicate TC rawdata
+def applyGeometryCorrectionsTCPtRawData( module_rawdata, modulesToCorrect ):
+
+    if modulesToCorrect.empty:
+        return
+
+    for index,row in modulesToCorrect.iterrows():
+        dictLabel = (0, row['u'], row['v'], row['layer'])
+        if dictLabel in module_rawdata[0].keys():
+            for i in range( len(module_rawdata) ):#phi region
+                rawdata = module_rawdata[i][dictLabel]
+                correction = row['nTCsRatio']
+
+                correction_integer = np.floor(correction)
+                correction_remainder = correction-correction_integer
+                
+                #Multiply number of entries according to correction_integer
+                data1 = rawdata*int(correction_integer)
+                #Then multiply entry on a random basis, more likely if correction_remainder is closer to 1
+                data2 = []
+                for r in rawdata:
+                    if ( correction_remainder > random() ):
+                        data2.append(r)
+
+                module_rawdata[i][dictLabel] = data1+data2
+
                     
 def loadSiliconCorrectionFile(fileName):
     column_names = ['u', 'v', 'layer']
@@ -50,3 +77,5 @@ def loadSiliconNTCCorrectionFile(fileName):
     column_names = ['u', 'v', 'layer','nTCsRatio', 'nTCs_mappingFile', 'nTCs_cmssw']
     modules = pd.read_csv(fileName, names=column_names)
     return modules
+
+

@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists,getlpGBTHists,getMiniGroupHists,getMinilpGBTGroups,getBundles, getBundledlpgbtHists,getBundledlpgbtHistsRoot,calculateChiSquared
-from process import loadDataFile,getTCsPassing,getlpGBTLoadInfo,getHexModuleLoadInfo
+from process import getModuleHists, getlpGBTHists, getMiniGroupHists, getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists, getBundledlpgbtHistsRoot, calculateChiSquared
+from process import loadDataFile, getTCsPassing, getlpGBTLoadInfo, getHexModuleLoadInfo, getModuleTCHists
 from plotting import plot, plot2D
 from example_minigroup_configuration import example_minigroup_configuration
 
@@ -51,7 +51,78 @@ def plot_ModuleLoads(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
     plot(lpgbt_loads_words,"loads_words.png",binwidth=0.1,xtitle='Number of words on a single lpGBT')
     plot2D(lpgbt_loads_tcs,lpgbt_layers,"tcs_vs_layer.png",xtitle='Number of TCs on a single lpGBT')
     plot2D(lpgbt_loads_words,lpgbt_layers,"words_vs_layer.png",xtitle='Number of words on a single lpGBT')
+    
+def produce_AllocationFile(MappingFile,allocation,minigroup_type="minimal"):
 
+    #Load mapping file
+    data = loadDataFile(MappingFile) 
+
+    #List of which minigroups are assigned to each bundle 
+    configuration = np.hstack(np.load(allocation,allow_pickle=True))
+
+    #Get minigroups
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+    
+    #Bundle together minigroup configuration
+    bundles = getBundles(minigroups_swap,configuration)
+
+    #Open output file
+    fileout = open('allocation_20200729_1.txt', 'w')
+    fileout.write( '(lpGBT_number) (number_modules) (sil=0scin=1) (layer) (u/eta) (v/phi) (number_elinks)\n' )
+    for b,bundle in enumerate(bundles):
+        fileout.write(str(b) + "\n")
+        for minigroup in bundle:
+
+            #list lpgbts in minigroup:
+            for lpgbt in minigroups_swap[minigroup]:
+                fileout.write(str(lpgbt) + " ")
+                
+                #Get modules associated to each lpgbt:
+                data_list = data[ ((data['TPGId1']==lpgbt) | (data['TPGId2']==lpgbt)) ]
+                fileout.write(str(len(data_list)) + " ")
+                for index, row in data_list.iterrows():
+                    if ( row['density']==2 ):
+                        fileout.write("1 " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']) + " " )
+                    else:
+                        fileout.write("0 " + str(row['layer']) + " " + str(row['u']) + " " + str(row['v']) + " " + str(row['TPGeLinkSum']) + " " )
+                fileout.write("\n")
+                
+    fileout.close()
+
+def produce_nTCsPerModuleHists(MappingFile,allocation,CMSSW_ModuleHists,minigroup_type="minimal",correctionConfig=None):
+
+    #Load mapping file
+    data = loadDataFile(MappingFile) 
+
+    #List of which minigroups are assigned to each bundle 
+    configuration = np.hstack(np.load(allocation,allow_pickle=True))
+
+    #Get minigroups
+    minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
+
+    #Get list of which modules are in each minigroup
+    minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
+    
+    #Bundle together minigroup configuration
+    bundles = getBundles(minigroups_swap,configuration)
+
+    #Get nTC hists per module
+    module_hists = getModuleTCHists(CMSSW_ModuleHists)
+    
+    #Open output file
+    outfile = ROOT.TFile.Open("hists_per_bundle.root","RECREATE")
+    for b,bundle in enumerate(bundles):
+        outfile.mkdir("bundle_" + str(b))
+        outfile.cd("bundle_" + str(b)) 
+        for minigroup in bundle:
+
+            for module in minigroups_modules[minigroup]:
+
+                module_hists[tuple(module)].Write()
+
+        outfile.cd()
+
+    
 def check_for_missing_modules_inMappingFile(MappingFile,CMSSW_Silicon,CMSSW_Scintillator):
 
     #Check for modules missing in the mapping file
@@ -87,12 +158,26 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     
     
 
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None,include_errors_in_chi2=False):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None, phisplitConfig=None, include_errors_in_chi2=False):
 
     #Load external data
     data = loadDataFile(MappingFile) #dataframe    
     try:
-        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = "per_roverz_bin")
+
+        #Configuration for how to divide TCs into RegionA and RegionB (traditionally phi > 60 and phi < 60)
+        split = "per_roverz_bin"
+        RegionA_fixvalue_min = 55
+        RegionB_fixvalue_max = None
+        
+        if phisplitConfig != None:
+            split = phisplitConfig['type']
+            if 'RegionA_fixvalue_min' in phisplitConfig.keys():
+                RegionA_fixvalue_min = phisplitConfig['RegionA_fixvalue_min']
+            if 'RegionB_fixvalue_max' in phisplitConfig.keys():
+                RegionB_fixvalue_max = phisplitConfig['RegionB_fixvalue_max']
+
+        inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, phidivisionX_fixvalue_min = phidivisionX_fixvalue_min, phidivisionY_fixvalue_max = phidivisionY_fixvalue_max)
+
     except EnvironmentError:
         print ( "File " + CMSSW_ModuleHists + " does not exist" )
         exit()
@@ -239,15 +324,18 @@ def main():
     if ( config['function']['study_mapping'] ):
         subconfig = config['study_mapping']
         correctionConfig = None
+        phisplitConfig = None
         include_errors_in_chi2 = False
         if 'corrections' in config.keys():
             correctionConfig = config['corrections']
         if 'include_errors_in_chi2' in subconfig.keys():
             include_errors_in_chi2 = subconfig['include_errors_in_chi2']
+        if 'phisplit' in subconfig.keys():
+            phisplitConfig = subconfig['phisplit']
         
             
         study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
-                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,include_errors_in_chi2=include_errors_in_chi2
+                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,phisplitConfig=phisplitConfig,include_errors_in_chi2=include_errors_in_chi2
             )
 
 
@@ -267,6 +355,18 @@ def main():
     if ( config['function']['plot_ModuleLoads'] ):
         subconfig = config['plot_ModuleLoads']
         plot_ModuleLoads(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
+
+    if ( config['function']['plot_ModuleLoads'] ):
+        subconfig = config['plot_ModuleLoads']
+        plot_ModuleLoads(subconfig['MappingFile'],subconfig['CMSSW_Silicon'],subconfig['CMSSW_Scintillator'])
+
+    if ( config['function']['produce_AllocationFile'] ):
+        subconfig = config['produce_AllocationFile']
+        produce_AllocationFile(subconfig['MappingFile'],subconfig['allocation'],minigroup_type=subconfig['minigroup_type'])
+
+    if ( config['function']['produce_nTCsPerModuleHists'] ):
+        subconfig = config['produce_nTCsPerModuleHists']
+        produce_nTCsPerModuleHists(subconfig['MappingFile'],subconfig['allocation'],CMSSW_ModuleHists = subconfig['CMSSW_ModuleHists'],minigroup_type=subconfig['minigroup_type'],correctionConfig=None)
 
     
 main()
