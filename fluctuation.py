@@ -22,25 +22,25 @@ def getMiniGroupHistsNumpy(module_hists, minigroups_modules):
     
     minigroup_hists = []
 
-    minigroup_hists_regionA = {}
-    minigroup_hists_regionB = {}
+    minigroup_hists_phidivisionX = {}
+    minigroup_hists_phidivisionY = {}
 
 
     for minigroup, modules in minigroups_modules.items():
         
-        regionA = np.zeros(42)
-        regionB = np.zeros(42)
+        phidivisionX = np.zeros(42)
+        phidivisionY = np.zeros(42)
         
         for module in modules:
-            regionA = regionA + module_hists[0][module[0],module[1],module[2],module[3]]
-            regionB = regionB + module_hists[1][module[0],module[1],module[2],module[3]]
+            phidivisionX = phidivisionX + module_hists[0][module[0],module[1],module[2],module[3]]
+            phidivisionY = phidivisionY + module_hists[1][module[0],module[1],module[2],module[3]]
         
-        minigroup_hists_regionA[minigroup] = regionA.copy()
-        minigroup_hists_regionB[minigroup] = regionB.copy()
+        minigroup_hists_phidivisionX[minigroup] = phidivisionX.copy()
+        minigroup_hists_phidivisionY[minigroup] = phidivisionY.copy()
 
         
-    minigroup_hists.append(minigroup_hists_regionA)
-    minigroup_hists.append(minigroup_hists_regionB)
+    minigroup_hists.append(minigroup_hists_phidivisionX)
+    minigroup_hists.append(minigroup_hists_phidivisionY)
 
     return minigroup_hists
 
@@ -49,24 +49,24 @@ def getMiniGroupTCPtRawData(module_rawdata, minigroups_modules):
     
     minigroup_rawdata = []
     
-    minigroup_rawdata_regionA = {}
-    minigroup_rawdata_regionB = {}
+    minigroup_rawdata_phidivisionX = {}
+    minigroup_rawdata_phidivisionY = {}
 
     for minigroup, modules in minigroups_modules.items():
 
-        regionA = []
-        regionB = []
+        phidivisionX = []
+        phidivisionY = []
 
         for module in modules:
         
-            regionA += module_rawdata[0][module[0],module[1],module[2],module[3]] 
-            regionB += module_rawdata[1][module[0],module[1],module[2],module[3]]
+            phidivisionX += module_rawdata[0][module[0],module[1],module[2],module[3]] 
+            phidivisionY += module_rawdata[1][module[0],module[1],module[2],module[3]]
 
-        minigroup_rawdata_regionA[minigroup] = regionA.copy()
-        minigroup_rawdata_regionB[minigroup] = regionB.copy()
+        minigroup_rawdata_phidivisionX[minigroup] = phidivisionX.copy()
+        minigroup_rawdata_phidivisionY[minigroup] = phidivisionY.copy()
 
-    minigroup_rawdata.append(minigroup_rawdata_regionA)
-    minigroup_rawdata.append(minigroup_rawdata_regionB)
+    minigroup_rawdata.append(minigroup_rawdata_phidivisionX)
+    minigroup_rawdata.append(minigroup_rawdata_phidivisionY)
     
     return minigroup_rawdata
 
