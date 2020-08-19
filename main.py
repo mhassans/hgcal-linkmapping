@@ -110,7 +110,6 @@ def produce_nTCsPerModuleHists(MappingFile,allocation,CMSSW_ModuleHists,minigrou
     module_hists = getModuleTCHists(CMSSW_ModuleHists)
     
     #Open output file
-
     outfile = ROOT.TFile.Open("hists_per_bundle.root","RECREATE")
     for b,bundle in enumerate(bundles):
         outfile.mkdir("bundle_" + str(b))
