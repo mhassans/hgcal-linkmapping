@@ -90,8 +90,8 @@ plot_Truncation:
 
 studyTruncationOptions:
   eventData: data/alldata_neutrino_gun_2006022.txt
-  options_to_study: [1,2,3,4,5]
+  options_to_study: [1,2,3] #Available options: [1,2,3,4,5]
 
 plot_Truncation_tc_Pt:
   eventData: data/alldata_ttbar_200813_sumpt.txt
-  options_to_study: [1,2,3]    #Should correspond to the same options in the input file
+  options_to_study: [1,2,3]    #Should correspond to the same options in the input file. Available options: [1,2,3,4,5]
