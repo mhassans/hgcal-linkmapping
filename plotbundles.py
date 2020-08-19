@@ -17,8 +17,7 @@ def print_numpy_plot(hists,plotname):
         numpy_hists.append( hist2array(hist) )
     
     for bundle in numpy_hists:
-        #pl.step((inclusive_hists[1])[:-1], bundle , width=0.012,align='edge')
-        pl.step((inclusive_hists[1])[:-1], bundle )
+        pl.step((inclusive_hists[1])[:-1], np.append(bundle,bundle[-1]), where = 'post' )
 
     pl.ylim((0,1100000))
     pl.savefig( plotname + ".png" )
