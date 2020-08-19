@@ -179,7 +179,7 @@ def getModuleHists(HistFile, split = "fixed", phidivisionX_fixvalue_min = 55, ph
         projectionX_PhiDivisionX.SetBinError(x,error.value)
         projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
         projectionX_PhiDivisionY.SetBinError(x,error.value)
-        
+
     inclusive_hists.append(projectionX_PhiDivisionX)
     inclusive_hists.append(projectionX_PhiDivisionY)
     
@@ -207,7 +207,7 @@ def getModuleHists(HistFile, split = "fixed", phidivisionX_fixvalue_min = 55, ph
                     projectionX_PhiDivisionX.SetBinError(x,error.value)
                     projectionX_PhiDivisionY.SetBinContent(x,PhiVsROverZ.IntegralAndError(x,x,1,int(split_indices_DivisionY[x-1]-1),error))
                     projectionX_PhiDivisionY.SetBinError(x,error.value)
-                
+
                 phiDivisionX[0,i,j,k] = projectionX_PhiDivisionX
                 phiDivisionY[0,i,j,k] = projectionX_PhiDivisionY
 

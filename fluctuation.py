@@ -240,7 +240,6 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
     nROverZBins = 42
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = nROverZBins, range = (0.076,0.58) )
-    #roverzBinning = (inclusive_hists[1])[:-1]
     roverzBinning = inclusive_hists[1]
     
     #List of which minigroups are assigned to each bundle 
@@ -305,9 +304,9 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             split_indices_phidivisionY = getPhiSplitIndices( PhiVsROverZ_Total, split = "per_roverz_bin")
             phi_split_phidivisionX = np.zeros( nROverZBins )
             phi_split_phidivisionY = np.zeros( nROverZBins )
-            for i,(idxA,idxB) in enumerate(zip(split_indices_phidivisionX, split_indices_phidivisionY)):
-                phi_split_phidivisionX[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxA))
-                phi_split_phidivisionY[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxB))
+            for i,(idxX,idxY) in enumerate(zip(split_indices_phidivisionX, split_indices_phidivisionY)):
+                phi_split_phidivisionX[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxY))
+                phi_split_phidivisionY[i] = PhiVsROverZ_Total.GetYaxis().GetBinLowEdge(int(idxY))
 
     if save_ntc_hists:
         for i in range (15):
@@ -722,7 +721,7 @@ def loadFluctuationData(eventData):
         dataX_bundled_lpgbthists_allevents[e] = np.array(list(event[dataX].values()))
         dataY_bundled_lpgbthists_allevents[e] = np.array(list(event[dataY].values()))
 
-    return dataX_bundled_lpgbthists_allevents,dataY_bundled_lpgbthists_allevents
+    return dataX_bundled_lpgbthists_allevents, dataY_bundled_lpgbthists_allevents
     
 def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir = "."):
     
@@ -738,7 +737,7 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
 
     inclusive_bundled_lpgbthists_allevents = phidivisionX_bundled_lpgbthists_allevents + phidivisionY_bundled_lpgbthists_allevents
 
-    #RegionA is either phidivisionX (in the case of options 4 and 5) or phidivisionY (in the cases of 1, 2 and 3)
+    #RegionA is either phidivisionX (in the case of options 4 and 5) or phidivisionX+phidivisionY (in the cases of 1, 2 and 3)
     
     truncation_values = []
     truncation_options = []
@@ -796,17 +795,19 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
 
 
 def plotTruncation(eventData, outdir = ".", includePhi60 = True):
+    os.system("mkdir -p " + outdir)
+    
     #Load pickled per-event bundle histograms
-    phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents = loadFluctuationData(eventData)
+    phidivisionX_bundled_lpgbthists_allevents,phidivisionY_bundled_lpgbthists_allevents = loadFluctuationData(eventData)
 
     #To get binning for r/z histograms
     inclusive_hists = np.histogram( np.empty(0), bins = 42, range = (0.076,0.58) )
-
+    roverzBinning = inclusive_hists[1]
+    
     #Form the intersection of the inclusive and phi60 arrays,
-    #taking for each bin the maximum of the inclusive and phi60 x 2
-    inclusive_bundled_lpgbthists_allevents = phigreater60_bundled_lpgbthists_allevents + philess60_bundled_lpgbthists_allevents
-    maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents*2)
-    #maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phigreater60_bundled_lpgbthists_allevents*2)
+    #taking for each bin the maximum of the inclusive and phidivisionY x 2
+    inclusive_bundled_lpgbthists_allevents = phidivisionX_bundled_lpgbthists_allevents + phidivisionY_bundled_lpgbthists_allevents
+    maximum_bundled_lpgbthists_allevents = np.maximum(inclusive_bundled_lpgbthists_allevents,phidivisionY_bundled_lpgbthists_allevents*2)
     
     if ( includePhi60 ):
         hists_max = np.amax(maximum_bundled_lpgbthists_allevents,axis=1)
@@ -834,13 +835,12 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     max_per_event_perbin90 = []
     max_per_event_perbin95 = []
     
-    for bundle_hists_phigreater60,bundle_hists_philess60 in zip(phigreater60_bundled_lpgbthists_allevents,philess60_bundled_lpgbthists_allevents):
+    for bundle_hists_phidivisionX,bundle_hists_phidivisionY in zip(phidivisionX_bundled_lpgbthists_allevents, phidivisionY_bundled_lpgbthists_allevents):
 
-        bundle_hists_inclusive = bundle_hists_philess60 + bundle_hists_phigreater60
-        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_philess60*2)
-        #bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phigreater60*2)
-        #24 arrays, with length of 42
-        
+        bundle_hists_inclusive = bundle_hists_phidivisionX + bundle_hists_phidivisionY
+        bundle_hists_maximum = np.maximum(bundle_hists_inclusive,bundle_hists_phidivisionY*2)
+        #24 arrays, with length of 42        
+
         sum99 = []
         sum95 = []
         sum90 = []
@@ -891,7 +891,7 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     pl.savefig( outdir + "/truncation.png" )
 
     pl.clf()
-    pl.step((inclusive_hists[1])[:-1], ratio_to_best, where='post')
+    pl.step(roverzBinning, np.append(ratio_to_best,ratio_to_best[-1]), where='post')
     pl.axhline(y=1, color='r', linestyle='--')
     pl.xlabel('r/z')
     pl.ylabel('Ratio of 1% truncation to likely best')
@@ -901,15 +901,15 @@ def plotTruncation(eventData, outdir = ".", includePhi60 = True):
     #As a cross check plot the bundle R/Z histograms integrated over all events.
     #These should be the same as those produced by plotbundles.py
     pl.clf()
-    for bundle in np.sum(phigreater60_bundled_lpgbthists_allevents,axis=0):
-        pl.step((inclusive_hists[1])[:-1], bundle, where='post')
+    for bundle in np.sum(phidivisionX_bundled_lpgbthists_allevents,axis=0):
+        pl.step(roverzBinning, np.append(bundle,bundle[-1]), where='post')
     pl.ylim((0,1100000))
-    pl.savefig( outdir + "/phiGreater60Integrated.png" )
+    pl.savefig( outdir + "/phidivisionXIntegrated.png" )
     pl.clf()
-    for bundle in np.sum(philess60_bundled_lpgbthists_allevents,axis=0):
-        pl.step((inclusive_hists[1])[:-1], bundle, where='post')
+    for bundle in np.sum(phidivisionY_bundled_lpgbthists_allevents,axis=0):
+        pl.step(roverzBinning, np.append(bundle,bundle[-1]), where='post')
     pl.ylim((0,1100000))
-    pl.savefig( outdir + "/phiLess60Integrated.png" )
+    pl.savefig( outdir + "/phidivisionYIntegrated.png" )
 
 def plot_Truncation_tc_Pt(eventData, options_to_study, outdir = ".",  ):
 

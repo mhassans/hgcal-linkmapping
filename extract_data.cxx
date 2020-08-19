@@ -9,6 +9,9 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <sys/stat.h>
+#include "json.hpp" // Author: Niels Lohmann https://github.com/nlohmann/json
+using nlohmann::json;
 
 unsigned tpgRawDataPacketWords(unsigned ntc) {
   unsigned nWords;
@@ -174,24 +177,40 @@ std::pair<float,float> getROverZPhi(float x, float y, float z, unsigned sector =
 
 }
 
+inline bool file_exists (const std::string& name) {
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
+}
 
-int main(){
+int main(int argc, char **argv){  
   TH1::SetDefaultSumw2();
   TH1::AddDirectory(kFALSE);
 
-
-  TString input_file = "data/small_v11_relval_ttbar_200625.root";
-  TString flat_file_silicon = "words_all_v11_silicon_ttbar.txt";
-  TString flat_file_scintillator = "words_all_v11_scintillator_ttbar.txt";
-  TString file_ROverZHistograms = "ROverZHistograms_v11_relval_ttbar_20200625.root";
-  std::string average_tcs_sil = "average_tcs_sil_v11_relval_ttbar_20200625.csv";
-  std::string average_tcs_scin = "average_tcs_scin_v11_relval_ttbar_20200625.csv";
+  //Load json config
+  std::string configfile = "config/extract_data.json";
+  if (argc > 1){
+    configfile = argv[1];
+  }
+  if ( !file_exists(configfile) ){
+    std::cout << "Config file " << configfile << " does not exist, exiting" << std::endl;
+    exit(1);
+  }
+  json config;
+  std::ifstream inputjson(configfile);
+  inputjson >> config;
   
-
-  TFile * file = new TFile(input_file,"READ");
+  std::string input_file = config["inputfile"];
+  std::string flat_file_silicon = config["flat_file_silicon"];
+  std::string flat_file_scintillator = config["flat_file_scintillator"];
+  std::string file_ROverZHistograms = config["file_ROverZHistograms"];
+  std::string file_nTCsPerEvent = config["file_nTCsPerEvent"];
+  std::string average_tcs_sil = config["average_tcs_sil"];
+  std::string average_tcs_scin = config["average_tcs_scin"];
+  bool createFlatFile = config["createFlatFile"];
+  
+  TFile * file = new TFile(TString(input_file),"READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
 
-  bool createFlatFile = false;
   int nPhiBins = 32*3;//5/3 degree bins
   double phiMax = 7.*M_PI/9.;//140 degrees
   double phiMin = -1.*M_PI/9.;//-20 degrees
@@ -255,6 +274,7 @@ int main(){
 
     TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,nPhiBins,phiMin,phiMax);
     std::map<std::tuple<int,int,int,int>,TH2D*> ROverZ_per_module;
+
     //Create one for each module (silicon at first)
     for ( int i = 0; i < 15; i++){//u
       for ( int j = 0; j < 15; j++){//v
@@ -262,6 +282,7 @@ int main(){
 
 	  if ( k < 28 && k%2 == 0 ) continue;
 	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,phiMin,phiMax);
+
 	}
       }
     }
@@ -342,11 +363,11 @@ int main(){
 	else{
 	  ROverZ_per_module[std::make_tuple(1,coordinates.first,coordinates.second,tc_layer->at(j))]->Fill(std::abs(roverz_phi.first),roverz_phi.second);
 	}
-      
-
-	
+      	
       }
 
+
+      
       std::vector<TH3D*> words_plus;
       std::vector<TH3D*> words_minus;
       std::vector<TH3D*> words_plus_scin;
@@ -452,7 +473,7 @@ int main(){
 
 
     //Save Eta Histograms	
-    TFile * file_out = new TFile(file_ROverZHistograms,"RECREATE");
+    TFile * file_out = new TFile(TString(file_ROverZHistograms),"RECREATE");
     file_out->cd();
     ROverZ_Inclusive->Write();
 
@@ -461,7 +482,7 @@ int main(){
     }
 
     file_out->Close();
-
+    
     //Create output csv
     std::ofstream fout;
     fout.open (average_tcs_sil);
