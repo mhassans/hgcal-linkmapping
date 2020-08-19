@@ -368,7 +368,6 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             #     break
             print ("Event number " + str(entry))
 
-
             for key1 in ROverZ_per_module_phidivisionX.keys():
                 for key2 in ROverZ_per_module_phidivisionX[key1].keys():
                     ROverZ_per_module_phidivisionX[key1][key2] = np.empty(0)
@@ -381,7 +380,7 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
             #event and fill R/Z histograms for each module
             #for phidivisionX and phidivisionY (traditionally phi > 60 degrees and phi < 60 degrees respectively)
 
-            #Check if tc_pt exists (needed to weight TCs by TC pT)
+            #Check if tc_pt exists (needed if we want to save the sum of (truncated) TC's pT)
             eventzip = zip(event.tc_waferu,event.tc_waferv,event.tc_layer,event.tc_x,event.tc_y,event.tc_z,event.tc_cellu,event.tc_cellv)
             if ( save_sum_tcPt ):
                 if hasattr(event, 'tc_pt'):
@@ -463,13 +462,19 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
                     #Collect the individual TC Pt values for a given minigroup, with the view to truncate and sum
                     if ( save_sum_tcPt ):
                         tc_Pt_rawdata = [ROverZ_per_module_phidivisionX_tcPt[z,sector],ROverZ_per_module_phidivisionY_tcPt[z,sector]]
+
+                        #Apply geometry corrections
                         applyGeometryCorrectionsTCPtRawData( tc_Pt_rawdata, modulesToCorrect )
+
+                        #Get lists of (r/z, pt) pairs, first for minigroups and then for bundles
                         minigroup_tc_Pt_rawdata = getMiniGroupTCPtRawData(tc_Pt_rawdata,minigroups_modules)
                         bundled_tc_Pt_rawdata = getBundledTCPtRawData(minigroup_tc_Pt_rawdata,bundles)
-                        
+
+                        #Get histograms of (truncated) sum pT per r/z bin
                         bundled_pt_hists = applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,
                                                                        truncation_options,
                                                                        ABratios,roverzBinning,nLinks)
+
                         bundled_pt_hists_allevents.append(bundled_pt_hists)
 
     except KeyboardInterrupt:
@@ -485,9 +490,11 @@ def checkFluctuations(initial_state, cmsswNtuple, mappingFile, outputName="allda
         
         with open( outputName + ".txt", "wb") as filep:
             pickle.dump(bundled_lpgbthists_allevents, filep)
+
         if save_sum_tcPt:
             with open( outputName + "_sumpt.txt", "wb") as filep:
                 pickle.dump(bundled_pt_hists_allevents, filep)
+
         if save_ntc_hists:
             outfile = ROOT.TFile(outputName + "_nTCs.root","RECREATE")
             for hist in nTCs_per_module.values():
@@ -614,8 +621,10 @@ def plot_NTCs_Vs_ROverZ(inputdata,axis,savename,truncation_curves=None,scaling=N
             if (scaling is not None):
                 scale=scaling[t]
             plotted_truncation_curve = np.append(truncation_option,truncation_option[-1])/scale
-            pl.step(axis,plotted_truncation_curve, where = 'post' , color=colours[t],linewidth='3')#+1? CHECK AGAIN
+            pl.step(axis,plotted_truncation_curve+1, where = 'post' , color=colours[t],linewidth='3')
             #plotted_truncation_curve+1 so that bin 'n' is visually included if the truncation value is 'n'
+            #Note because of the geometric corrections the number of trigger cells might be fractional,
+            #in which case the +1 is not correct (but only applies to the bins at low and high r/z)
             
     pl.xlabel('r/z')
     pl.ylabel('Number of TCs')
@@ -630,7 +639,12 @@ def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, title, s
 
     #Sum over all events and bundles of truncated TCs (in each R/Z bin) 
     truncatedsum_A = np.sum(np.where(dataA<truncation_curve, dataA, truncation_curve),axis=(0,1))
-    truncatedsum_B = np.sum(np.where(dataB<truncation_curve/TCratio, dataB, truncation_curve/TCratio),axis=(0,1))
+
+    if ( TCratio.is_integer() ):
+        truncation_curveB = np.ceil(truncation_curve/TCratio) #ceil rather than round in the cases ratio=1 or ratio=2 to make sure 0.5 goes to 1.0 (not default in python). 
+    else:
+        truncation_curveB = np.round(truncation_curve/TCratio)
+    truncatedsum_B = np.sum(np.where(dataB<truncation_curveB, dataB, truncation_curveB),axis=(0,1))
 
     #Divide to get the fraction, taking into account division by zero
     ratioA = np.divide(   truncatedsum_A, totalsumA , out=np.ones_like(truncatedsum_A), where=totalsumA!=0 )
@@ -645,9 +659,7 @@ def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, title, s
     pl.ylim((0.6,1.05))
     pl.legend()
     pl.savefig( savename + ".png" )
-    pl.clf()
-
-    
+    pl.clf()    
     
 def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     #Get an array of size nROverZbins, which indicates the maximum number of TCs allowed in each RoverZ bin
@@ -676,15 +688,13 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     diffA = np.sum(truncation_floor) - maxtcs_A
     if ( diffA < 0 ): diffA = 0
     arg = np.argsort(truncation_floor)[:int(diffA)]
+    #arg is a list of the indices of the highest bins
     truncation_floor[arg]-=1
 
     diffB = np.sum(truncation_floor)*(maxtcs_B/maxtcs_A) - maxtcs_B
     if ( diffB < 0 ): diffB = 0
     arg = np.argsort(truncation_floor)[:int(diffB)]
     truncation_floor[arg]-=1
-
-    # diffA = np.sum(truncation_floor) - maxtcs_A
-    # diffB = np.sum(truncation_floor)*(maxtcs_B/maxtcs_A) - maxtcs_B
     
     return truncation_floor
 
