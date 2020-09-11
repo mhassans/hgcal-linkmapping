@@ -574,7 +574,7 @@ def sumMaximumOverAllEventsAndBundles(truncation,data):
     Bscaling_factor = data[2]/data[3]
     
     maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
-    
+
     #Use ceiling rather than round to get worst case
     overallsum_A = np.sum(np.amax(np.where(data[0]<truncation*maxAB,data[0],np.where(truncation*maxAB<maximum_A,truncation*maxAB,maximum_A)),axis=(1,0)))
     overallsum_B = np.sum(np.amax(np.where(data[1]<truncation*(maxAB/Bscaling_factor),data[1],np.where(truncation*(maxAB/Bscaling_factor)<maximum_B,truncation*maxAB/Bscaling_factor,maximum_B)),axis=(1,0)))
@@ -588,8 +588,9 @@ def sumMaximumOverAllEventsAndBundles(truncation,data):
     if ( valB < 0 ):
          valB = valB * -1.5
 
-
+        
     optval = valA + valB
+
     return optval
 
 def plot_NTCs_Vs_ROverZ(inputdata,axis,savename,truncation_curves=None,scaling=None):
@@ -664,24 +665,99 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     #Get an array of size nROverZbins, which indicates the maximum number of TCs allowed in each RoverZ bin
     
     #'scalar' is the value by which the maximum (of data_A or data_B x TCratio) is multiplied to get the truncation values
-    result = optimize.minimize_scalar(sumMaximumOverAllEventsAndBundles,args=[data_A, data_B, maxtcs_A, maxtcs_B],bounds=(-1,1.0),method='bounded')
-    scalar = result.x
+    # result = optimize.minimize_scalar(sumMaximumOverAllEventsAndBundles,args=[data_A, data_B, maxtcs_A, maxtcs_B],bounds=(-1,1.0),method='bounded')
+    # scalar2 = result.x
 
     maximum_A = np.amax(data_A,axis=(1,0))
     maximum_B = np.amax(data_B,axis=(1,0))
+
+    #    quantities for paul
+    mean_A = np.mean(np.sum(data_A, axis=(2)))
+    mean_B = np.mean(np.sum(data_B, axis=(2)))
+
+    mean_A2 = np.mean(data_A, axis=(0,1))
+    mean_B2 = np.mean(data_B, axis=(0,1))
+
+    pc_A = np.percentile(data_A, 99, axis=(0,1))
+    pc_B = np.percentile(data_B, 99,axis=(0,1))
+
+    
+    Bscaling_factor = maxtcs_A/maxtcs_B
+    maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
+    maxAB2 = np.maximum( mean_A2, mean_B2 * Bscaling_factor )
+    maxABpc = np.maximum( pc_A, pc_B * Bscaling_factor )
+
+    
+    #scalar2 = min( maxtcs_A/np.sum(maximum_A), maxtcs_B/np.sum(maximum_B)  )
+
+
+    #    scalar = min( maxtcs_A/np.sum(maxAB2), maxtcs_B*Bscaling_factor/np.sum(maxAB2) )
+
+    # scalar2 = min( maxtcs_A/np.sum(maxAB), maxtcs_B*Bscaling_factor/np.sum(maxAB)  )
+    # truncation_float2 = maxAB * scalar2
+    
+    scalar = min( maxtcs_A/np.sum(maxABpc), maxtcs_B*Bscaling_factor/np.sum(maxABpc ))
+    truncation_float = maxABpc * scalar
+
+
+    # print ( "trunc float old, sum")
+    # print ( truncation_float2, np.sum(truncation_float2) )
+    
+    # print ( "trunc float new, sum")
+    # print ( truncation_float, np.sum(truncation_float2) )
+    
+    #print ( maxtcs_A, np.sum(maximum_A),  maxtcs_B, np.sum(maximum_B) )
+    # Bscaling_factor = data[2]/data[3]
+    # maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
+
+    #print ("scalar1 = ", scalar, "scalar2 = ", scalar2)
+
     
     #Find the floating-point truncation values and round down to make these integers.
     #This will be less than the allowed total due to rounding down.
-    truncation_float = np.maximum(maximum_A,maximum_B*(maxtcs_A/maxtcs_B)) * scalar
+    
+
+    #truncation_float = np.maximum(mean_A2,mean_B2*Bscaling_factor) * scalar
+
+    #truncation_float = maxAB2 * scalar#
+
+
+                  
+
+    #    print ("maxAB2 = ", maxAB2)
+
+    # print ("maxABpc = ", maxABpc)
+    # print ("scalar = ", scalar)
+    # #print ("scalarold = ", scalar2)
+    # print (truncation_float)
+
+    
     truncation_floor = np.floor(truncation_float)
+
     #The integer difference from the allowed total gives the number of bins that should have their limit incremented by 1.
+
     integer_difference = np.floor(np.sum(truncation_float)-np.sum(truncation_floor))
     #Find the N bins which have the biggest difference between the floating-point truncation values and the rounded integer
     #and add 1 to these. This gives limits for A, and for B (divided by TC ratio)
-    arg = np.argsort(truncation_floor-truncation_float)[:int(integer_difference)]
+    #arg = np.argsort(truncation_floor-truncation_float)[:int(integer_difference)]
+
+
     
+    #Find the N bins which have the smallest floor values
+    #and add 1 to these. This gives limits for A, and for B (divided by TC ratio)
+
+    arg = np.argsort(truncation_floor)[:int(integer_difference)]
     truncation_floor[arg]+=1
 
+    #Reassign from highest to lowest
+    nTimesToReassign = 1
+    nReassign = 10
+    for n in range (nTimesToReassign):
+        argReduce = np.argsort(truncation_floor)[-int(nReassign):]
+        argIncrease = np.argsort(truncation_floor)[:int(nReassign)]
+        truncation_floor[argIncrease]+=1
+        truncation_floor[argReduce]-=1
+    
     #Reduce the maximum bins of truncation_floor if sum of truncation_floor is larger than that allowed by maxtcs_A and maxtcs_B
     #Done consecutively in A and B so as not to overcorrect
     diffA = np.sum(truncation_floor) - maxtcs_A
