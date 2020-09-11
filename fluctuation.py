@@ -195,7 +195,7 @@ def applyTruncationAndGetPtSums(bundled_tc_Pt_rawdata,truncation_values, TCratio
                     pt_values_regionA = inclusive[digitised_regionA_rawdata==roverz+1][:,1] #roverz+1 to convert from index to digitised bin number
                 elif links == 4:
                     pt_values_regionA = phidivisionX[digitised_regionA_rawdata==roverz+1][:,1] #roverz+1 to convert from index to digitised bin number
-                pt_values_regionB = phidivisionX[digitised_regionB_rawdata==roverz+1][:,1] 
+                pt_values_regionB = phidivisionY[digitised_regionB_rawdata==roverz+1][:,1] 
 
                 #Get the number to be truncated in each region in an R/Z bin
                 number_truncated_regionA = int(max(0,len(pt_values_regionA)-truncation[roverz]))
