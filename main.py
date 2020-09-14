@@ -164,17 +164,17 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     data = loadDataFile(MappingFile) #dataframe    
     try:
 
-        #Configuration for how to divide TCs into RegionA and RegionB (traditionally phi > 60 and phi < 60)
+        #Configuration for how to divide TCs into phidivisionX and phidivisionY (traditionally phi > 60 and phi < 60)
         split = "per_roverz_bin"
-        RegionA_fixvalue_min = 55
-        RegionB_fixvalue_max = None
+        phidivisionX_fixvalue_min = 55
+        phidivisionY_fixvalue_max = None
         
         if phisplitConfig != None:
             split = phisplitConfig['type']
-            if 'RegionA_fixvalue_min' in phisplitConfig.keys():
-                RegionA_fixvalue_min = phisplitConfig['RegionA_fixvalue_min']
-            if 'RegionB_fixvalue_max' in phisplitConfig.keys():
-                RegionB_fixvalue_max = phisplitConfig['RegionB_fixvalue_max']
+            if 'phidivisionX_fixvalue_min' in phisplitConfig.keys():
+                phidivisionX_fixvalue_min = phisplitConfig['phidivisionX_fixvalue_min']
+            if 'phidivisionY_fixvalue_max' in phisplitConfig.keys():
+                phidivisionY_fixvalue_max = phisplitConfig['phidivisionY_fixvalue_max']
 
         inclusive_hists,module_hists = getModuleHists(CMSSW_ModuleHists, split = split, phidivisionX_fixvalue_min = phidivisionX_fixvalue_min, phidivisionY_fixvalue_max = phidivisionY_fixvalue_max)
 
