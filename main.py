@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists, getlpGBTHists, getMiniGroupHists, getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists, getBundledlpgbtHistsRoot, calculateChiSquared
+from process import getModuleHists, getlpGBTHists, getMiniGroupHists, getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists, getBundledlpgbtHistsRoot, calculateChiSquared, getMaximumNumberOfModulesInABundle
 from process import loadDataFile, getTCsPassing, getlpGBTLoadInfo, getHexModuleLoadInfo, getModuleTCHists
 from plotting import plot, plot2D
 from example_minigroup_configuration import example_minigroup_configuration
@@ -193,6 +193,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap,return_error_squares=include_errors_in_chi2)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
+    #Get list of which modules are in each minigroup
+    minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
     
     def mapping_max(state):
         global chi2_min
@@ -203,6 +205,8 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         bundles = getBundles(minigroups_swap,state)
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
+        max_modules = getMaximumNumberOfModulesInABundle(minigroups_modules,bundles)
+        print ("max modules = ", max_modules)
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
 
         typicalchi2 = 600000000000

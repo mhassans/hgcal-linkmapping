@@ -640,6 +640,17 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
 
     return bundled_lpgbthists_list
 
+def getMaximumNumberOfModulesInABundle(minigroups_modules,bundles):
+
+    maximum = 0
+
+    for bundle in bundles:
+        size_of_bundle = 0
+        for minigroup in bundle:
+            size_of_bundle += len(minigroups_modules[minigroup])
+        maximum = max(maximum,size_of_bundle)
+        
+    return maximum
 
 def calculateChiSquared(inclusive,grouped):
 
