@@ -206,12 +206,13 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
     #Get list of which modules are in each minigroup
     minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
-    max_modules = None
+
     
     def mapping_max(state):
         global chi2_min
         global combbest
 
+        max_modules = None
         chi2 = 0
     
         bundles = getBundles(minigroups_swap,state)
