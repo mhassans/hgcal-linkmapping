@@ -28,7 +28,11 @@ study_mapping:
   #'bylayer_silicon_seprated', 'bylayer', 'minimal'
   minigroup_type: 'minimal'
 
-  include_errors_in_chi2: False
+  #Options for use in the chi2 function
+  chi2:
+    include_errors_in_chi2: False
+    include_max_modules_in_chi2: False
+    max_modules_weighting_factor: 1000
 
   phisplit:
     #How to split in phi, either 'per_roverz_bin' (midpoint splits taken from CMSSW_ModuleHists file) or 'fixed'

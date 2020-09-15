@@ -640,19 +640,23 @@ def getBundledlpgbtHists(minigroup_hists,bundles):
 
     return bundled_lpgbthists_list
 
-def getMaximumNumberOfModulesInABundle(minigroups_modules,bundles):
+def getNumberOfModulesInEachBundle(minigroups_modules,bundles):
 
-    maximum = 0
-
+    data = []
     for bundle in bundles:
         size_of_bundle = 0
         for minigroup in bundle:
             size_of_bundle += len(minigroups_modules[minigroup])
-        maximum = max(maximum,size_of_bundle)
-        
+        data.append(size_of_bundle)
+
+    return data
+
+def getMaximumNumberOfModulesInABundle(minigroups_modules,bundles):
+
+    maximum = max(getNumberOfModulesInEachBundle( minigroups_modules,bundles ))
     return maximum
 
-def calculateChiSquared(inclusive,grouped):
+def calculateChiSquared(inclusive,grouped,max_modules=None,weight_max_modules=1000):
 
     use_error_squares = False
     #Check if the minigroup_hists were produced
@@ -661,6 +665,13 @@ def calculateChiSquared(inclusive,grouped):
     if ( grouped[0][0].ndim == 2 ):
         use_error_squares = True
 
+    #If optimisation of the number of modules in a bundle is performed
+    #Aim for the maximum to be as low as possible -
+    #i.e. for the number of modules in each bundle to be similar
+    use_max_modules = False
+    if ( max_modules != None):
+        use_max_modules = True
+    
     chi2_total = 0
     
     for i in range(len(inclusive)):
@@ -682,4 +693,7 @@ def calculateChiSquared(inclusive,grouped):
                     if ( squared_error != 0 ):
                         chi2_total+=(squared_diff/squared_error)
 
+    if use_max_modules:
+        chi2_total += weight_max_modules * max_modules
+        
     return chi2_total
