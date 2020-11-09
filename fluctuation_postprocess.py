@@ -177,28 +177,32 @@ def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, title, s
 
 def getTruncationValuesForGivenScalar(scalar,data):
 
+    #For the get reverse truncation values method
+    #For a given "Scalar" (i.e. efficiency or sum of truncated TCs / sum of all TCs)
+    
     #Sum over all events and bundles of TCs (in each R/Z bin) 
     totalsumA = np.sum( data[0] , axis=1 )
     totalsumB = np.sum( data[1] , axis=1 )
 
-    startingTruncationMax = 100
+    #Largest possible truncation value (end of loop)
+    largestTruncationMax = 100
+
     #Loop over bins
     truncation_values = []
 
     for b in range(len(data[0])):
         scalarset = False
-        #print ("bin",b)
-        for x in range (0,startingTruncationMax,1):
+        for x in range (0,largestTruncationMax,1):
             truncation_sum = np.sum(np.where(data[0][b]<x, data[0][b], x))
 
             if ( scalar*totalsumA[b] == 0):
                 truncation_values.append(0)
                 scalarset = True
                 break
-            
-            #print ("valx = ",x, "truncsum = ",truncation_sum, "scalar*totalsumA[b]", scalar*totalsumA[b])
+
             if truncation_sum > scalar*totalsumA[b]:#break when the truncated sum is below the desired value
-                #truncation_sum_x_plus_1 = np.sum(np.where(data[0][b]<x+1, data[0][b], x+1))
+
+                #Get the truncation sum for x-1 and check whether this or the sum for x is closer to giving the desired efficiency
                 truncation_sum_x_minus_1 = np.sum(np.where(data[0][b]<x-1, data[0][b], x-1))
                 if ( abs( scalar*totalsumA[b] - truncation_sum ) < abs( scalar*totalsumA[b] - truncation_sum_x_minus_1 )):
                     truncation_values.append(x)
@@ -208,8 +212,8 @@ def getTruncationValuesForGivenScalar(scalar,data):
                 break
 
         if not scalarset:
-            #checking
-            print ("Scalar not set - strange? for bin", b)
+            print ("Scalar not set for bin", b)
+            print ("This should not generally happen")
             truncation_values.append(1)
     
     return truncation_values
@@ -222,39 +226,33 @@ def getOptimalScalingValue(scalar,data):
     return difference
     
 def getReverseTruncationValues( dataA, dataB, maxTCsA, maxTCsB ):
-
+    #Obtain the truncation values by demanding that the efficiency be constant as a function of r/z
+    
     nbins = len(dataA[0][0]) #42
 
-
+    #reorganise data to get bin b values across all events and bundles
     reorganisedDataA = []
     reorganisedDataB = []
     for b in range(nbins):
-        reorganisedDataA.append(np.array([j[b] for i in dataA for j in i]))#get bin b values across all events and bundles
+        reorganisedDataA.append(np.array([j[b] for i in dataA for j in i]))
         reorganisedDataB.append(np.array([j[b] for i in dataB for j in i]))
     reorganisedDataA = np.asarray(reorganisedDataA)
     reorganisedDataB = np.asarray(reorganisedDataB)
-        
-    
-    # ratioA = np.full(0.95,42)
-    # truncatedsum_A = np.multiply(ratioA, totalsumA)
-
-    #truncatedsum_A = np.sum(np.where(dataA<truncation_curve, dataA, truncation_curve),axis=(0,1))
-
+            
+    #Get optimal scalar (efficiency), i.e. the highest possible, whilst also keeping constant as a function of r/z
     result = optimize.minimize_scalar(getOptimalScalingValue,args=[reorganisedDataA,reorganisedDataB,maxTCsA,maxTCsB],bounds=(0.8,1.0),method='bounded')
 
-    print (result.x)
+    #Get first iteration of truncation values
     truncation_values = getTruncationValuesForGivenScalar(result.x,[reorganisedDataA,reorganisedDataB,maxTCsA,maxTCsB])
+
     #Give 'spare' TCs to low bins
     truncation_values = np.array(truncation_values)
     n_spare = maxTCsA - np.sum(truncation_values)
-    print ("nspare = ",n_spare)
     if ( n_spare != 0):
         arg = np.argsort(truncation_values)[::np.sign(n_spare)][:int(abs(n_spare))]
         print ( "np.sign(n_spare)", np.sign(n_spare) )
         truncation_values[arg]+=np.sign(n_spare)
         
-    print ("using new method and sum", np.sum(truncation_values) )
-    print (truncation_values)
     return truncation_values
     
 def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
@@ -348,7 +346,7 @@ def loadFluctuationData(eventData):
 
     return dataX_bundled_lpgbthists_allevents, dataY_bundled_lpgbthists_allevents
     
-def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir = "."):
+def studyTruncationOptions(eventData, options_to_study, truncation_values_method, truncationConfig, outdir = "."):
     
     #Load pickled per-event bundle histograms
     phidivisionX_bundled_lpgbthists_allevents,phidivisionY_bundled_lpgbthists_allevents = loadFluctuationData(eventData)
@@ -381,9 +379,14 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
             
         regionB_bundled_lpgbthists_allevents.append(phidivisionY_bundled_lpgbthists_allevents)
 
-        truncation_values.append( getTruncationValuesRoverZ(regionA_bundled_lpgbthists_allevents[-1],regionB_bundled_lpgbthists_allevents[-1],truncation_options[-1]['maxTCsA'],truncation_options[-1]['maxTCsB']) )
-                                  
-    
+        if truncation_values_method == "original":
+            truncation_values.append( getTruncationValuesRoverZ(regionA_bundled_lpgbthists_allevents[-1],regionB_bundled_lpgbthists_allevents[-1],truncation_options[-1]['maxTCsA'],truncation_options[-1]['maxTCsB']) )
+
+        if truncation_values_method == "reverse":
+            truncation_values.append( getReverseTruncationValues( regionA_bundled_lpgbthists_allevents[-1], regionB_bundled_lpgbthists_allevents[-1], truncation_options[-1]['maxTCsA'], truncation_options[-1]['maxTCsB']) )
+
+
+    print ("Using truncation values method " + truncation_values_method)
     for option,truncation in zip(options_to_study,truncation_values):
         print ("Truncation Option " + str(option) + " = ")
         print ( repr(truncation) )
@@ -405,22 +408,18 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
             options_4links.append(truncation)
             options_4links_TCratio.append(option['maxTCsA']/option['maxTCsB'])
 
-    # if ( len(options_3links) > 0 ):                
-    #     plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_3links",options_3links)
-    #     plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_3links",options_3links,options_3links_TCratio)
+    if ( len(options_3links) > 0 ):                
+        plot_NTCs_Vs_ROverZ(inclusive_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_3links",options_3links)
+        plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_3links",options_3links,options_3links_TCratio)
 
-    # if ( len(options_4links) > 0 ):                
-    #     #Don't want inclusive here to be region A, rather phidivisionX
-    #     plot_NTCs_Vs_ROverZ(phidivisionX_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",options_4links)
-    #     plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",options_4links,options_4links_TCratio)
+    if ( len(options_4links) > 0 ):                
+        #Don't want inclusive here to be region A, rather phidivisionX
+        plot_NTCs_Vs_ROverZ(phidivisionX_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_A_4links",options_4links)
+        plot_NTCs_Vs_ROverZ(phidivisionY_bundled_lpgbthists_allevents,inclusive_hists[1],outdir + "/NTCs_Vs_ROverZ_B_4links",options_4links,options_4links_TCratio)
 
     #Plot sum of truncated TCs over the sum of all TCs
     for (study_num,option,values,regionA,regionB) in zip(options_to_study,truncation_options,truncation_values,regionA_bundled_lpgbthists_allevents,regionB_bundled_lpgbthists_allevents):
-        #test  = getReverseTruncationValues( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'])
-        test  = getReverseTruncationValues( regionA, regionB, option['maxTCsA'], option['maxTCsB'])
-        #test = np.array([2, 7, 32, 24, 19, 17, 15, 15, 14, 13, 13, 12, 12, 11, 11, 10, 10, 9, 9, 9, 9, 8, 8, 8, 8, 8, 7, 7, 7, 7, 6, 5, 3, 3, 2, 3, 2, 2, 2, 2, 1, 1])
-        #plot_frac_Vs_ROverZ( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], "Sum No. TCs Option " + str(study_num), outdir + "/frac_option_"+str(study_num))
-        plot_frac_Vs_ROverZ( regionA, regionB, test, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], "Sum No. TCs Option " + str(study_num), outdir + "/frac_option_"+str(study_num))
+        plot_frac_Vs_ROverZ( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], "Sum No. TCs Option " + str(study_num), outdir + "/frac_option_"+str(study_num))
 
 
 def plotTruncation(eventData, outdir = ".", includePhi60 = True):
