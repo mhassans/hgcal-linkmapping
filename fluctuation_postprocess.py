@@ -175,48 +175,87 @@ def plot_frac_Vs_ROverZ( dataA, dataB, truncation_curve, TCratio, axis, title, s
     pl.savefig( savename + ".png" )
     pl.clf()    
 
-def getReverseTruncationValues( dataA, dataB, truncation_curve, TCratio ):
+def getTruncationValuesForGivenScalar(scalar,data):
 
     #Sum over all events and bundles of TCs (in each R/Z bin) 
-    totalsumA = np.sum( dataA , axis=(0,1) )
-    totalsumB = np.sum( dataB , axis=(0,1) )
+    totalsumA = np.sum( data[0] , axis=1 )
+    totalsumB = np.sum( data[1] , axis=1 )
 
+    startingTruncationMax = 100
+    #Loop over bins
+    truncation_values = []
+
+    for b in range(len(data[0])):
+        scalarset = False
+        #print ("bin",b)
+        for x in range (0,startingTruncationMax,1):
+            truncation_sum = np.sum(np.where(data[0][b]<x, data[0][b], x))
+
+            if ( scalar*totalsumA[b] == 0):
+                truncation_values.append(0)
+                scalarset = True
+                break
+            
+            #print ("valx = ",x, "truncsum = ",truncation_sum, "scalar*totalsumA[b]", scalar*totalsumA[b])
+            if truncation_sum > scalar*totalsumA[b]:#break when the truncated sum is below the desired value
+                #truncation_sum_x_plus_1 = np.sum(np.where(data[0][b]<x+1, data[0][b], x+1))
+                truncation_sum_x_minus_1 = np.sum(np.where(data[0][b]<x-1, data[0][b], x-1))
+                if ( abs( scalar*totalsumA[b] - truncation_sum ) < abs( scalar*totalsumA[b] - truncation_sum_x_minus_1 )):
+                    truncation_values.append(x)
+                else:
+                    truncation_values.append(x-1)
+                scalarset = True
+                break
+
+        if not scalarset:
+            #checking
+            print ("Scalar not set - strange? for bin", b)
+            truncation_values.append(1)
+    
+    return truncation_values
+    
+def getOptimalScalingValue(scalar,data):
+
+    truncation_values = getTruncationValuesForGivenScalar(scalar,data)
+    difference = abs(data[2]-np.sum(truncation_values))
+        
+    return difference
+    
+def getReverseTruncationValues( dataA, dataB, maxTCsA, maxTCsB ):
+
+    nbins = len(dataA[0][0]) #42
+
+
+    reorganisedDataA = []
+    reorganisedDataB = []
+    for b in range(nbins):
+        reorganisedDataA.append(np.array([j[b] for i in dataA for j in i]))#get bin b values across all events and bundles
+        reorganisedDataB.append(np.array([j[b] for i in dataB for j in i]))
+    reorganisedDataA = np.asarray(reorganisedDataA)
+    reorganisedDataB = np.asarray(reorganisedDataB)
+        
+    
     # ratioA = np.full(0.95,42)
     # truncatedsum_A = np.multiply(ratioA, totalsumA)
 
     #truncatedsum_A = np.sum(np.where(dataA<truncation_curve, dataA, truncation_curve),axis=(0,1))
 
-    #Loop over bins
-    final_trunc = []
-    val = 0.993
-    for b in range(42):
-        valset = False
-        bin_b = np.array([j[b] for i in dataA for j in i])
-        
-        for x in range (40,-1,-1):
-            trunc_sum = np.sum(np.where(bin_b<x, bin_b, x))
-            if trunc_sum < val*totalsumA[b]:
-                trunc_sum_xp1 = np.sum(np.where(bin_b<x+1, bin_b, x+1))
-                if ( abs( val*totalsumA[b] - trunc_sum ) < abs( val*totalsumA[b] - trunc_sum_xp1 )):
-                    final_trunc.append(x)
-                else:
-                    final_trunc.append(x+1)
-                valset = True
-                break
+    result = optimize.minimize_scalar(getOptimalScalingValue,args=[reorganisedDataA,reorganisedDataB,maxTCsA,maxTCsB],bounds=(0.8,1.0),method='bounded')
 
-        if not valset:
-            final_trunc.append(1)
-        
+    print (result.x)
+    truncation_values = getTruncationValuesForGivenScalar(result.x,[reorganisedDataA,reorganisedDataB,maxTCsA,maxTCsB])
     #Give 'spare' TCs to low bins
-    final_trunc = np.array(final_trunc)
-    n_spare = 400 - np.sum(final_trunc)
-
-    arg = np.argsort(final_trunc)[:int(n_spare)]
-    final_trunc[arg]+=1
-    
-    print ("using new method and sum", np.sum(final_trunc) )
-    print (final_trunc)
-    return final_trunc
+    truncation_values = np.array(truncation_values)
+    n_spare = maxTCsA - np.sum(truncation_values)
+    print ("nspare = ",n_spare)
+    if ( n_spare != 0):
+        arg = np.argsort(truncation_values)[::np.sign(n_spare)][:int(abs(n_spare))]
+        print ( "np.sign(n_spare)", np.sign(n_spare) )
+        truncation_values[arg]+=np.sign(n_spare)
+        
+    print ("using new method and sum", np.sum(truncation_values) )
+    print (truncation_values)
+    return truncation_values
     
 def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     #Get an array of size nROverZbins, which indicates the maximum number of TCs allowed in each RoverZ bin
@@ -228,77 +267,30 @@ def getTruncationValuesRoverZ(data_A, data_B, maxtcs_A, maxtcs_B):
     maximum_A = np.amax(data_A,axis=(1,0))
     maximum_B = np.amax(data_B,axis=(1,0))
 
-    #    quantities for paul
+    ###
+    ##quantities to read out for paul
     mean_A = np.mean(np.sum(data_A, axis=(2)))
     mean_B = np.mean(np.sum(data_B, axis=(2)))
-
     mean_A2 = np.mean(data_A, axis=(0,1))
     mean_B2 = np.mean(data_B, axis=(0,1))
-
+    ####
+    
     pc_A = np.percentile(data_A, 99, axis=(0,1))
     pc_B = np.percentile(data_B, 99,axis=(0,1))
 
-    
     Bscaling_factor = maxtcs_A/maxtcs_B
-    maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
-    maxAB2 = np.maximum( mean_A2, mean_B2 * Bscaling_factor )
-    maxABpc = np.maximum( pc_A, pc_B * Bscaling_factor )
+    #maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
+    maxABpc = np.maximum( pc_A, pc_B * Bscaling_factor )#percentile
 
-    
-    #scalar2 = min( maxtcs_A/np.sum(maximum_A), maxtcs_B/np.sum(maximum_B)  )
-
-
-    #    scalar = min( maxtcs_A/np.sum(maxAB2), maxtcs_B*Bscaling_factor/np.sum(maxAB2) )
-
-    # scalar2 = min( maxtcs_A/np.sum(maxAB), maxtcs_B*Bscaling_factor/np.sum(maxAB)  )
-    # truncation_float2 = maxAB * scalar2
-    
-    scalar = min( maxtcs_A/np.sum(maxABpc), maxtcs_B*Bscaling_factor/np.sum(maxABpc ))
-    truncation_float = maxABpc * scalar
-
-
-    # print ( "trunc float old, sum")
-    # print ( truncation_float2, np.sum(truncation_float2) )
-    
-    # print ( "trunc float new, sum")
-    # print ( truncation_float, np.sum(truncation_float2) )
-    
-    #print ( maxtcs_A, np.sum(maximum_A),  maxtcs_B, np.sum(maximum_B) )
-    # Bscaling_factor = data[2]/data[3]
-    # maxAB = np.maximum(maximum_A,maximum_B*Bscaling_factor)
-
-    #print ("scalar1 = ", scalar, "scalar2 = ", scalar2)
-
-    
     #Find the floating-point truncation values and round down to make these integers.
     #This will be less than the allowed total due to rounding down.
-    
 
-    #truncation_float = np.maximum(mean_A2,mean_B2*Bscaling_factor) * scalar
-
-    #truncation_float = maxAB2 * scalar#
-
-
-                  
-
-    #    print ("maxAB2 = ", maxAB2)
-
-    # print ("maxABpc = ", maxABpc)
-    # print ("scalar = ", scalar)
-    # #print ("scalarold = ", scalar2)
-    # print (truncation_float)
-
-    
+    scalar = min( maxtcs_A/np.sum(maxABpc), maxtcs_B*Bscaling_factor/np.sum(maxABpc ))
+    truncation_float = maxABpc * scalar
     truncation_floor = np.floor(truncation_float)
 
     #The integer difference from the allowed total gives the number of bins that should have their limit incremented by 1.
-
     integer_difference = np.floor(np.sum(truncation_float)-np.sum(truncation_floor))
-    #Find the N bins which have the biggest difference between the floating-point truncation values and the rounded integer
-    #and add 1 to these. This gives limits for A, and for B (divided by TC ratio)
-    #arg = np.argsort(truncation_floor-truncation_float)[:int(integer_difference)]
-
-
     
     #Find the N bins which have the smallest floor values
     #and add 1 to these. This gives limits for A, and for B (divided by TC ratio)
@@ -424,7 +416,8 @@ def studyTruncationOptions(eventData, options_to_study, truncationConfig, outdir
 
     #Plot sum of truncated TCs over the sum of all TCs
     for (study_num,option,values,regionA,regionB) in zip(options_to_study,truncation_options,truncation_values,regionA_bundled_lpgbthists_allevents,regionB_bundled_lpgbthists_allevents):
-        test  = getReverseTruncationValues( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'])
+        #test  = getReverseTruncationValues( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'])
+        test  = getReverseTruncationValues( regionA, regionB, option['maxTCsA'], option['maxTCsB'])
         #test = np.array([2, 7, 32, 24, 19, 17, 15, 15, 14, 13, 13, 12, 12, 11, 11, 10, 10, 9, 9, 9, 9, 8, 8, 8, 8, 8, 7, 7, 7, 7, 6, 5, 3, 3, 2, 3, 2, 2, 2, 2, 1, 1])
         #plot_frac_Vs_ROverZ( regionA, regionB, values, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], "Sum No. TCs Option " + str(study_num), outdir + "/frac_option_"+str(study_num))
         plot_frac_Vs_ROverZ( regionA, regionB, test, option['maxTCsA']/option['maxTCsB'], inclusive_hists[1], "Sum No. TCs Option " + str(study_num), outdir + "/frac_option_"+str(study_num))

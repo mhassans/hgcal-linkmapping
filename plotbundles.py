@@ -3,7 +3,7 @@ import ROOT
 import sys
 import yaml
 import numpy as np
-from process import loadDataFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists
+from process import loadDataFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists,getNumberOfModulesInEachBundle,getMiniModuleGroups
 from geometryCorrections import applyGeometryCorrections
 from root_numpy import hist2array
 import matplotlib.pyplot as pl
@@ -150,6 +150,8 @@ def main():
         minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
         bundles = getBundles(minigroups_swap,init_state)
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
+        nmodules = getNumberOfModulesInEachBundle(minigroups_modules,bundles)
 
         inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input_inclusive")
         inclusive.Add( inclusive_hists_input[1] )
