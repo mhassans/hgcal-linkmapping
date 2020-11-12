@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import ROOT
+ROOT.gROOT.SetBatch(1)
 import sys
 import yaml
 import numpy as np

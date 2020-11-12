@@ -503,7 +503,7 @@ def getMiniModuleGroups(data,minigroups_swap):
     return minigroups_modules
     
 def getMiniTowerGroups(data, minigroups_modules):
-    
+
     minigroups_towers = {}
     
     for mg,module_list in minigroups_modules.items():
@@ -764,8 +764,7 @@ def calculateChiSquared(inclusive,grouped,max_modules=None,weight_max_modules=10
         chi2_total += weight_max_modules * max_modules
 
     if use_max_towers:
-        #print ( chi2_total, weight_max_towers * max_towers )
-        #chi2_total += weight_max_towers * max_towers
-        chi2_total = max_towers
+        chi2_total += weight_max_towers * max_towers
+
 
     return chi2_total

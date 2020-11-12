@@ -242,7 +242,6 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         if include_max_towers_in_chi2:
             bundled_towers = getTowerBundles(minigroups_towers, bundles)
             max_towers = len(max(bundled_towers,key=len))#Get the length of bundle with the greatest number of towers
-            print ("max_towers = ",max_towers)
             
         chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists,max_modules,max_modules_weighting_factor,max_towers,max_towers_weighting_factor)
 
@@ -254,6 +253,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             combbest = np.copy(state)
             if ( print_level > 0 ):
                 print (algorithm," ", chi2_min, " ", chi2_min/typicalchi2)
+                if include_max_towers_in_chi2:
+                    print ("max_towers = ", maxtowers)
+                if include_max_modules_in_chi2:
+                    print ("max_modules = ", max_modules)
             if ( print_level > 1 ):
                 print (repr(combbest))
 
@@ -299,7 +302,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
-        np.save(output_dir + "/" + filename + "_saveroot.npy",bundles)
+        np.save(output_dir + "/" + filename + "_saveroot.npy",np.array(bundles,dtype=object))
         for sector in bundled_hists_root:
             for key, value in sector.items():
                 value.Write()
@@ -332,7 +335,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         finally:
             bundles = getBundles(minigroups_swap,combbest)
-            np.save(output_dir + "/" + filename + ".npy",bundles)
+            np.save(output_dir + "/" + filename + ".npy",np.array(bundles,dtype=object))
             file1 = open(output_dir + "/chi2_"+filenumber+".txt","a")
             file1.write( "bundles[" + filenumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
