@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.metrics import accuracy_score
 
-from process import getModuleHists, getlpGBTHists, getMiniGroupHists, getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists, getBundledlpgbtHistsRoot, calculateChiSquared
-from process import loadDataFile, getTCsPassing, getlpGBTLoadInfo, getHexModuleLoadInfo, getModuleTCHists
+from process import getModuleHists, getlpGBTHists, getMiniGroupHists, getMinilpGBTGroups, getMiniModuleGroups, getBundles, getBundledlpgbtHists, getBundledlpgbtHistsRoot, calculateChiSquared, getMaximumNumberOfModulesInABundle
+from process import loadDataFile, loadModuleTowerMappingFile, getTCsPassing, getlpGBTLoadInfo, getHexModuleLoadInfo, getModuleTCHists, getMiniTowerGroups, getTowerBundles
 from plotting import plot, plot2D
 from example_minigroup_configuration import example_minigroup_configuration
 
@@ -158,10 +158,11 @@ def check_for_missing_modules_inCMSSW(MappingFile,CMSSW_Silicon,CMSSW_Scintillat
     
     
 
-def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None, phisplitConfig=None, include_errors_in_chi2=False):
+def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",initial_state="best_so_far",random_seed=None,max_iterations=100000,output_dir=".",print_level=0, minigroup_type="minimal",correctionConfig=None, phisplitConfig=None, chi2Config=None, TowerMappingFile=None):
 
     #Load external data
-    data = loadDataFile(MappingFile) #dataframe    
+    data = loadDataFile(MappingFile) #dataframe
+
     try:
 
         #Configuration for how to divide TCs into phidivisionX and phidivisionY (traditionally phi > 60 and phi < 60)
@@ -187,23 +188,62 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
         print ( "Applying geometry corrections" )
         applyGeometryCorrections( inclusive_hists, module_hists, correctionConfig )
 
+    include_errors_in_chi2 = False
+    include_max_modules_in_chi2 = False
+    include_max_towers_in_chi2 = False
+    max_modules_weighting_factor = 1000
+    if chi2Config != None:
+        if 'include_errors_in_chi2' in chi2Config.keys():
+            include_errors_in_chi2 = chi2Config['include_errors_in_chi2']
+        if 'include_max_modules_in_chi2' in chi2Config.keys():
+            include_max_modules_in_chi2 = chi2Config['include_max_modules_in_chi2']
+        if 'max_modules_weighting_factor' in chi2Config.keys():
+            max_modules_weighting_factor = chi2Config['max_modules_weighting_factor']
+        if 'include_max_towers_in_chi2' in chi2Config.keys():
+            include_max_towers_in_chi2 = chi2Config['include_max_towers_in_chi2']
+        if 'max_modules_weighting_factor' in chi2Config.keys():
+            max_towers_weighting_factor = chi2Config['max_towers_weighting_factor']
+
+    #Load tower data if required
+    if include_max_towers_in_chi2:
+        try:
+            towerdata = loadModuleTowerMappingFile(TowerMappingFile)
+        except EnvironmentError:
+            print ( "File " + TowerMappingFile + " does not exist" )
+            exit()
+            
     #Form hists corresponding to each lpGBT from module hists
     lpgbt_hists = getlpGBTHists(data, module_hists)
 
     minigroups,minigroups_swap = getMinilpGBTGroups(data, minigroup_type)
     minigroup_hists = getMiniGroupHists(lpgbt_hists,minigroups_swap,return_error_squares=include_errors_in_chi2)
     minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
+    #Get list of which modules are in each minigroup
+    minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
+
+    #Get list of which towers are in each minigroup
+    if include_max_towers_in_chi2:
+        minigroups_towers = getMiniTowerGroups(towerdata, minigroups_modules)
+
     
     def mapping_max(state):
         global chi2_min
         global combbest
 
+        max_modules = None
+        max_towers = None
         chi2 = 0
     
         bundles = getBundles(minigroups_swap,state)
         bundled_lpgbthists = getBundledlpgbtHists(minigroup_hists,bundles)
 
-        chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists)
+        if include_max_modules_in_chi2:
+            max_modules = getMaximumNumberOfModulesInABundle(minigroups_modules,bundles)
+        if include_max_towers_in_chi2:
+            bundled_towers = getTowerBundles(minigroups_towers, bundles)
+            max_towers = len(max(bundled_towers,key=len))#Get the length of bundle with the greatest number of towers
+            
+        chi2 = calculateChiSquared(inclusive_hists,bundled_lpgbthists,max_modules,max_modules_weighting_factor,max_towers,max_towers_weighting_factor)
 
         typicalchi2 = 600000000000
         if include_errors_in_chi2:
@@ -213,6 +253,10 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             combbest = np.copy(state)
             if ( print_level > 0 ):
                 print (algorithm," ", chi2_min, " ", chi2_min/typicalchi2)
+                if include_max_towers_in_chi2:
+                    print ("max_towers = ", maxtowers)
+                if include_max_modules_in_chi2:
+                    print ("max_modules = ", max_modules)
             if ( print_level > 1 ):
                 print (repr(combbest))
 
@@ -258,7 +302,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         chi2 = calculateChiSquared(inclusive_hists,bundled_hists)
         newfile = ROOT.TFile("lpgbt_10.root","RECREATE")
-        np.save(output_dir + "/" + filename + "_saveroot.npy",bundles)
+        np.save(output_dir + "/" + filename + "_saveroot.npy",np.array(bundles,dtype=object))
         for sector in bundled_hists_root:
             for key, value in sector.items():
                 value.Write()
@@ -291,7 +335,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
 
         finally:
             bundles = getBundles(minigroups_swap,combbest)
-            np.save(output_dir + "/" + filename + ".npy",bundles)
+            np.save(output_dir + "/" + filename + ".npy",np.array(bundles,dtype=object))
             file1 = open(output_dir + "/chi2_"+filenumber+".txt","a")
             file1.write( "bundles[" + filenumber + "] = " + str(chi2_min) + "\n" )
             file1.close( )
@@ -326,16 +370,17 @@ def main():
         correctionConfig = None
         phisplitConfig = None
         include_errors_in_chi2 = False
+        include_max_modules_in_chi2 = False
         if 'corrections' in config.keys():
             correctionConfig = config['corrections']
-        if 'include_errors_in_chi2' in subconfig.keys():
-            include_errors_in_chi2 = subconfig['include_errors_in_chi2']
+        if 'chi2' in subconfig.keys():
+            chi2Config = subconfig['chi2']
         if 'phisplit' in subconfig.keys():
             phisplitConfig = subconfig['phisplit']
         
             
         study_mapping(subconfig['MappingFile'],subconfig['CMSSW_ModuleHists'],algorithm=subconfig['algorithm'],initial_state=subconfig['initial_state'],random_seed=subconfig['random_seed'],max_iterations=subconfig['max_iterations'],output_dir=config['output_dir'],print_level=config['print_level'],
-                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,phisplitConfig=phisplitConfig,include_errors_in_chi2=include_errors_in_chi2
+                      minigroup_type=subconfig['minigroup_type'],correctionConfig = correctionConfig,phisplitConfig=phisplitConfig,chi2Config=chi2Config,TowerMappingFile=subconfig['TowerMappingFile']
             )
 
 

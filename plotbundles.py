@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import ROOT
+ROOT.gROOT.SetBatch(1)
 import sys
 import yaml
 import numpy as np
-from process import loadDataFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists
+from process import loadDataFile,loadModuleTowerMappingFile,getMinilpGBTGroups,getBundles,getBundledlpgbtHistsRoot,getMiniGroupHists,getMinilpGBTGroups,getModuleHists,getlpGBTHists,getNumberOfModulesInEachBundle,getMiniModuleGroups,getMiniTowerGroups,getTowerBundles
 from geometryCorrections import applyGeometryCorrections
 from root_numpy import hist2array
 import matplotlib.pyplot as pl
@@ -17,7 +18,6 @@ def print_numpy_plot(hists,plotname):
         numpy_hists.append( hist2array(hist) )
     
     for bundle in numpy_hists:
-        #pl.step((inclusive_hists[1])[:-1], np.append(bundle,bundle[-1]), where = 'post' )
         pl.step(inclusive_hists[1], np.append(bundle,bundle[-1]), where = 'post' )
 
     pl.ylim((0,1100000))
@@ -120,12 +120,14 @@ def main():
         
         init_state = np.hstack(np.load(filein_str,allow_pickle=True))
         MappingFile = config['npy_configuration']['mappingFile']
+        TowerMappingFile = config['npy_configuration']['towerMappingFile']
         CMSSW_ModuleHists = config['npy_configuration']['CMSSW_ModuleHists']
         phisplitConfig = None
         if 'phisplit' in config['npy_configuration'].keys():
             phisplitConfig = config['npy_configuration']['phisplit']
 
         data = loadDataFile(MappingFile) #dataframe
+        towerdata = loadModuleTowerMappingFile(TowerMappingFile)
         minigroups,minigroups_swap = getMinilpGBTGroups(data)
 
         #Configuration for how to divide TCs into phidivisionX and phidivisionY (traditionally phi > 60 and phi < 60)
@@ -150,7 +152,12 @@ def main():
         minigroup_hists_root = getMiniGroupHists(lpgbt_hists,minigroups_swap,root=True)
         bundles = getBundles(minigroups_swap,init_state)
         bundled_hists = getBundledlpgbtHistsRoot(minigroup_hists_root,bundles)
+        minigroups_modules = getMiniModuleGroups(data,minigroups_swap)
+        nmodules = getNumberOfModulesInEachBundle(minigroups_modules,bundles)
 
+        minigroups_towers = getMiniTowerGroups(towerdata, minigroups_modules)
+        bundled_towers = getTowerBundles(minigroups_towers, bundles)
+            
         inclusive = inclusive_hists_input[0].Clone("inclusive_hists_input_inclusive")
         inclusive.Add( inclusive_hists_input[1] )
         phidivisionX = inclusive_hists_input[0].Clone("inclusive_hists_input_phidivisionX")
@@ -213,16 +220,13 @@ def main():
             phidivisionY_hists_ratio[-1].Divide( phidivisionY  )
             inclusive_hists_ratio_to_phidivisionY[-1].Divide( phidivisionY  )            
 
-        
-    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio,"inclusive")
-    print_ratio_plot(phidivisionX,phidivisionX_hists,phidivisionX_hists_ratio,"phidivisionX")
-    print_ratio_plot(phidivisionY,phidivisionY_hists,phidivisionY_hists_ratio,"phidivisionY")
-
-    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phidivisionY,"inclusive_to_phidivisionY")
-
     print_numpy_plot( inclusive_hists, "numpy_inclusive")
     print_numpy_plot( phidivisionX_hists, "numpy_phidivisionX")
     print_numpy_plot( phidivisionY_hists, "numpy_phidivisionY")
 
+    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio,"inclusive")
+    print_ratio_plot(phidivisionX,phidivisionX_hists,phidivisionX_hists_ratio,"phidivisionX")
+    print_ratio_plot(phidivisionY,phidivisionY_hists,phidivisionY_hists_ratio,"phidivisionY")
+    print_ratio_plot(inclusive,inclusive_hists,inclusive_hists_ratio_to_phidivisionY,"inclusive_to_phidivisionY")
+
 main()
-    
