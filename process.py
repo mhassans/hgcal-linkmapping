@@ -520,7 +520,8 @@ def getMiniTowerGroups(data, minigroups_modules):
 
         #Remove duplicates
         towerlist = [item for sublist in towerlist for item in sublist]
-        towerlist = np.unique(towerlist,axis=0).tolist()
+        if len(towerlist) > 0:
+            towerlist = np.unique(towerlist,axis=0).tolist()
         minigroups_towers[mg] = towerlist
 
     return minigroups_towers
