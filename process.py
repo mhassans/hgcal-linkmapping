@@ -10,6 +10,7 @@ import random
 import sys
 from root_numpy import hist2array
 import ctypes
+import re
 
 np.set_printoptions(threshold=sys.maxsize)
 pd.set_option('display.max_rows', None)
@@ -39,7 +40,30 @@ def getTCsPassing(CMSSW_Silicon,CMSSW_Scintillator):
     data_scin = pd.read_csv(CMSSW_Scintillator,names=column_names)
 
     return data,data_scin
+
+def loadModuleTowerMappingFile(MappingFile):
+    #File detailing which towers (in eta and phi coordinates)
+    #are overlapped by which modules
+    module_towermap = {}
     
+    with open(MappingFile) as towerfile:
+
+        for m,module in enumerate(towerfile):
+            module_towers = []
+            if (m==0): continue #header line
+            modulesplit = module.split()
+
+            #Get all data within square brackets
+            towermaps = re.findall(r"[^[]*\[([^]]*)\]", module)        
+
+            for tower in towermaps:
+                towersplit = tower.split(", ")
+                module_towers.append([int(towersplit[0]), int(towersplit[1])])
+
+            module_towermap[0, int(modulesplit[0]), int(modulesplit[1]), int(modulesplit[2])] = module_towers
+
+    return module_towermap
+
 #Legacy function to read ROverZHistograms file with 1D histograms
 def getModuleHists1D(HistFile):
 
@@ -478,7 +502,44 @@ def getMiniModuleGroups(data,minigroups_swap):
         
     return minigroups_modules
     
+def getMiniTowerGroups(data, minigroups_modules):
+    
+    minigroups_towers = {}
+    
+    for mg,module_list in minigroups_modules.items():
 
+        towerlist = []
+        for module in module_list:
+            if ( module[0] == 1 ):
+                continue #no scintillator in module tower mapping file for now
+            if ( (module[0],module[3],module[1],module[2]) in data ):
+                #silicon/scintillator, layer, u, v
+                towerlist.append(data[module[0],module[3],module[1],module[2]]);
+            else:
+                print ( "Module missing from tower file (layer, u, v): ",module[3],module[1],module[2])
+
+        #Remove duplicates
+        towerlist = [item for sublist in towerlist for item in sublist]
+        towerlist = np.unique(towerlist,axis=0).tolist()
+        minigroups_towers[mg] = towerlist
+
+    return minigroups_towers
+
+def getTowerBundles(minigroups_towers, bundles):
+
+    #For each bundle get a list of the unique tower bins touched by the constituent modules
+    all_bundles_towers = []
+    
+    for bundle in bundles:
+        bundle_towers = []
+        for minigroup in bundle:
+            bundle_towers.append(minigroups_towers[minigroup])
+        #Remove duplicates
+        bundle_towers = [item for sublist in bundle_towers for item in sublist]
+        bundle_towers = np.unique(bundle_towers,axis=0).tolist()
+        all_bundles_towers.append(bundle_towers)
+        
+    return all_bundles_towers
 
 def getMinilpGBTGroups(data, minigroup_type="minimal"):
 
@@ -656,7 +717,7 @@ def getMaximumNumberOfModulesInABundle(minigroups_modules,bundles):
     maximum = max(getNumberOfModulesInEachBundle( minigroups_modules,bundles ))
     return maximum
 
-def calculateChiSquared(inclusive,grouped,max_modules=None,weight_max_modules=1000):
+def calculateChiSquared(inclusive,grouped,max_modules=None,weight_max_modules=1000,max_towers=None,weight_max_towers=1000):
 
     use_error_squares = False
     #Check if the minigroup_hists were produced
@@ -671,7 +732,13 @@ def calculateChiSquared(inclusive,grouped,max_modules=None,weight_max_modules=10
     use_max_modules = False
     if ( max_modules != None):
         use_max_modules = True
-    
+
+    #If optimisation of the number of towers touched in a bundle is performed
+    #Aim for the maximum to be as low as possible
+    use_max_towers = False
+    if ( max_towers != None):
+        use_max_towers = True
+
     chi2_total = 0
     
     for i in range(len(inclusive)):
@@ -695,5 +762,10 @@ def calculateChiSquared(inclusive,grouped,max_modules=None,weight_max_modules=10
 
     if use_max_modules:
         chi2_total += weight_max_modules * max_modules
-        
+
+    if use_max_towers:
+        #print ( chi2_total, weight_max_towers * max_towers )
+        #chi2_total += weight_max_towers * max_towers
+        chi2_total = max_towers
+
     return chi2_total
