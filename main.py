@@ -254,7 +254,7 @@ def study_mapping(MappingFile,CMSSW_ModuleHists,algorithm="random_hill_climb",in
             if ( print_level > 0 ):
                 print (algorithm," ", chi2_min, " ", chi2_min/typicalchi2)
                 if include_max_towers_in_chi2:
-                    print ("max_towers = ", maxtowers)
+                    print ("max_towers = ", max_towers)
                 if include_max_modules_in_chi2:
                     print ("max_modules = ", max_modules)
             if ( print_level > 1 ):
