@@ -19,9 +19,9 @@ Then each time you start a new session run: `source start_mapping_env.sh`
 
 Main file containing the option to run all functions:
 - `plot_lpGBTLoads`, `plot_ModuleLoads`, : Processes MC event data and determines the average number of TCs, or words, per lpGBT
-- `study_mapping`, :  Find the optimised way of assigning lpGBTs to bundles 
+- `study_mapping`, :  Find the optimised way of assigning lpGBTs to bundles
 
-Run using the config file `config/default.yaml`
+Run using the config file `config/default.yaml`, where the input options are listed for each parameter
 
 ## `process.py`
 
@@ -30,6 +30,8 @@ Contains the helper functions required for each function in `main.py`
 ## `extract_data.cxx`
 
 Prepares the input for `process.py`. Takes a CMSSW output root file as input and produces a .csv file.
+Takes a json config file as input (default in `config/extract_data.json`).
+Run like `make; ./extract_data.cxx config/extract_data.json;`
 
 ## `rotate.py` and `rotate.cxx`
 
@@ -39,4 +41,10 @@ Python and C++ implementations of the mapping between 120 degree HGCal sectors i
 
 Takes as input a choice of lpgbt bundles, and bins the trigger cell data event by event
 There are several plotting scripts that investigate the impact of truncation on the number of trigger cells.
-Run using the config file `config/fluctuation.yaml`
+Run using the config file `config/fluctuation.yaml`.
+Also the option to save the sum of (truncated or total) trigger cell p<sub>T</sub> as a function of R/Z for each event.
+
+## `plotbundles.py`
+
+Various plotting functions, mainly to plot the 24 R/Z histograms for each bundle, and take the ratio to the inclusive distribution over 24.
+Run using the config file `config/plotbundles.yaml`

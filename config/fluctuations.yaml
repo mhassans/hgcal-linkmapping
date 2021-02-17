@@ -1,18 +1,98 @@
 function:
   checkFluctuations: False
-  plot_MeanMax: False
+  plot_MeanMax: True
   plot_Truncation: True
-
+  studyTruncationOptions: False
+  plot_Truncation_tc_Pt: False
+  
 print_level: 0
 output_dir: .
 
-checkFluctuations:
-  initial_state: bundles_job_fluctuation_studies.npy
-  cmsswNtuple: data/small_v11_neutrino_gun_200415.root
+corrections:
+  ldmToHdmModuleCorrectionFile: 'data/different_moduleType_HDMInMappingFile_linkMapping.txt'
+  ldmToHdmCorrectionType: 'FixedOcc'
+  nTCCorrectionFile: 'data/different_nTCs_linkMapping.txt'
+
+truncationConfig:
+  option1:
+    maxTCsA: 400
+    maxTCsB: 200
+    nLinks: 3
+    predetermined_values: [ 1.,  6., 14., 13., 18., 13., 12., 17., 19., 11., 10., 14., 13.,
+       13., 14., 12., 12., 14., 13., 11., 10., 13., 11., 13., 14., 12.,
+        9.,  9.,  9., 10., 12.,  8.,  4.,  4.,  2.,  3.,  3.,  2.,  1.,
+        1.,  0.,  0.]
+  option2:
+    maxTCsA: 400
+    maxTCsB: 302
+    nLinks: 3
+    predetermined_values: [ 1.,  6., 16., 14., 17., 13., 13., 17., 19., 12., 10., 14., 12.,
+       12., 13., 12., 12., 14., 12., 11., 10., 13., 11., 12., 14., 12.,
+        9.,  9.,  9., 10., 12.,  8.,  4.,  4.,  2.,  3.,  3.,  2.,  1.,
+        1.,  0.,  0.]
+  option3:
+    maxTCsA: 714
+    maxTCsB: 357
+    nLinks: 3
+    predetermined_values: [ 1., 12., 26., 23., 31., 23., 21., 30., 34., 20., 18., 25., 23.,
+       23., 24., 21., 22., 25., 23., 19., 18., 23., 20., 23., 25., 22.,
+       17., 17., 16., 18., 22., 14.,  6.,  6.,  5.,  5.,  5.,  3.,  3.,
+        2.,  0.,  0.]
+  option4:
+    maxTCsA: 466
+    maxTCsB: 466
+    nLinks: 4
+    predetermined_values: [ 1.,  6., 16., 14., 19., 13., 15., 17., 15., 16., 15., 14., 15.,
+       15., 15., 20., 17., 21., 17., 13., 14., 21., 15., 13., 15., 15.,
+       12., 14., 11., 10.,  8.,  7.,  3.,  4.,  2.,  2.,  2.,  2.,  1.,
+        1.,  0.,  0.]
+  option5:
+    maxTCsA: 780
+    maxTCsB: 780
+    nLinks: 4
+    predetermined_values: [ 2., 10., 28., 24., 32., 22., 25., 28., 26., 27., 25., 23., 26.,
+       25., 24., 34., 28., 35., 28., 22., 24., 34., 24., 21., 26., 24.,
+       20., 24., 18., 16., 14., 11.,  5.,  6.,  4.,  3.,  4.,  3.,  2.,
+        2.,  0.,  0.]
+
+checkFluctuations:  
+  beginEvent: -1
+  endEvent: -1
+  initial_state: bundles_job_best_neutrinogun_200617.npy
+  cmsswNtuple: data/small_v11_relval_ttbar_200611.root
+  outputName: alldata_neutrino_gun_2006022
   mappingFile: data/FeMappingV7.txt
-
+  save_ntc_hists: False
+  
+  tcPtConfig:
+    #Set 'save_sum_tcPt' to be True if you want to save the sum of TC_pt, with different truncation options
+    save_sum_tcPt: False
+    options_to_study: [1,2,3]
+    
+  phisplit:
+    #How to split in phi, if 'per_roverz_bin' need to provide a root splitfile
+    #If 'fixed' need to provide split values in degrees,
+    #i.e. fixed point in phi at which the split should occur: 'phidivisionX_fixvalue_min' and #phidivisionY_fixvalue_max'
+    #'per_roverz_bin', 'fixed'
+    type: per_roverz_bin
+    
+    splitfile: data/ROverZHistograms_v11_relval_ttbar_20200716.root
+    phidivisionX_fixvalue_min: 55 #degrees
+    phidivisionY_fixvalue_max: 55 #degrees
+  
 plot_MeanMax:
-  eventData: alldata_2500.txt
-
+  eventData: data/alldata_neutrino_gun_2006022.txt
+  includePhi60: True
+  
 plot_Truncation:
-  eventData: alldata_2500.txt
+  eventData: data/alldata_neutrino_gun_2006022.txt
+  includePhi60: True
+
+studyTruncationOptions:
+  eventData: data/alldata_neutrino_gun_2006022.txt
+  options_to_study: [1,2,3] #Available options: [1,2,3,4,5]
+  truncation_values_method: #Available options: original, reverse
+  
+plot_Truncation_tc_Pt:
+  eventData: data/alldata_ttbar_200813_sumpt.txt
+  options_to_study: [1,2,3]    #Should correspond to the same options in the input file. Available options: [1,2,3,4,5]

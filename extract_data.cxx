@@ -9,6 +9,9 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <sys/stat.h>
+#include "json.hpp" // Author: Niels Lohmann https://github.com/nlohmann/json
+using nlohmann::json;
 
 unsigned tpgRawDataPacketWords(unsigned ntc) {
   unsigned nWords;
@@ -94,26 +97,30 @@ unsigned uvMapping(unsigned layer, std::pair<int,int> &uv) {
 unsigned etaphiMapping(unsigned layer, std::pair<int,int> &etaphi) {
   unsigned sector(0);
   
-  if (etaphi.second <= 48){
+  if (etaphi.second > 24 && etaphi.second <= 72){
     sector = 0;
   }
-  else if (etaphi.second > 48 && etaphi.second <= 96){
-    sector = 1;
+  else if (etaphi.second > 72 && etaphi.second <= 120){
+    sector = 2;
   }
   else {
-    sector = 2;
+    sector = 1;
   }
   
   int ep;
   int pp;
-  
-  if(sector==1) {
-    pp=etaphi.second-48;
-  } else if(sector==2) {
-    pp=etaphi.second-96;
+
+  if (sector==0) {
+    pp=etaphi.second-24;
   }
-  else{
-    pp = etaphi.second;
+  else if (sector==2) {
+    pp=etaphi.second-72;
+  }
+  else if (sector==1) {
+    if (etaphi.second<=24){
+      etaphi.second+=144;
+    }
+    pp=etaphi.second-120;
   }
   
   pp = (pp-1)/4; //Phi index 1-12
@@ -149,50 +156,64 @@ std::pair<float,float> getEtaPhi(float x, float y, float z){
   return std::make_pair(eta,phi);
 
 }
-std::pair<float,float> getROverZPhi(float x, float y, float z){
+std::pair<float,float> getROverZPhi(float x, float y, float z, unsigned sector = 0){
 
-  if ( z < 0 ){
+  if ( z > 0 ){
     x *= -1;
   }
   
   float r = std::sqrt( x*x + y*y  );
   float phi = std::atan2(y,x);
-
-  phi = phi + M_PI;
-  if ( phi < (2*M_PI/3) )
-    phi = phi;
-  else if ( phi < (4*M_PI/3) )
-    phi = phi-(2*M_PI/3);
-  else
-    phi = phi-(4*M_PI/3);
-
+  
+  if (sector == 1)
+    if ( phi < M_PI && phi > 0)
+      phi = phi-(2*M_PI/3);
+    else
+      phi = phi+(4*M_PI/3);
+  else if (sector == 2)
+    phi = phi+(2*M_PI/3);
+        
   return std::make_pair(r/z,phi);
 
 }
 
+inline bool file_exists (const std::string& name) {
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
+}
 
-int main(){
+int main(int argc, char **argv){  
   TH1::SetDefaultSumw2();
   TH1::AddDirectory(kFALSE);
 
-  // TString input_file = "../small_v11_ttbar_200406.root";
-  // TString flat_file_silicon = "words_all_v11_silicon.txt";
-  // TString flat_file_scintillator = "words_all_v11_scintillator.txt";
-
-  TString input_file = "../small_v11_neutrino_gun_200415.root";
-  TString flat_file_silicon = "words_all_v11_silicon_neutrino_gun.txt";
-  TString flat_file_scintillator = "words_all_v11_scintillator_neutrino_gun.txt";
-
-  //TFile * file = new TFile("data/PU200-V11-TTBAR-2.root","READ");
-  //TFile * file = new TFile("data/PU200-QG.root","READ");
-  //  TFile * file = new TFile("../small_v11_ttbar_200406.root","READ");
-
-
-  TFile * file = new TFile(input_file,"READ");
+  //Load json config
+  std::string configfile = "config/extract_data.json";
+  if (argc > 1){
+    configfile = argv[1];
+  }
+  if ( !file_exists(configfile) ){
+    std::cout << "Config file " << configfile << " does not exist, exiting" << std::endl;
+    exit(1);
+  }
+  json config;
+  std::ifstream inputjson(configfile);
+  inputjson >> config;
+  
+  std::string input_file = config["inputfile"];
+  std::string flat_file_silicon = config["flat_file_silicon"];
+  std::string flat_file_scintillator = config["flat_file_scintillator"];
+  std::string file_ROverZHistograms = config["file_ROverZHistograms"];
+  std::string file_nTCsPerEvent = config["file_nTCsPerEvent"];
+  std::string average_tcs_sil = config["average_tcs_sil"];
+  std::string average_tcs_scin = config["average_tcs_scin"];
+  bool createFlatFile = config["createFlatFile"];
+  
+  TFile * file = new TFile(TString(input_file),"READ");
   TTree * tree = (TTree*)file->Get("HGCalTriggerNtuple");
 
-  bool createFlatFile = false;
-  int nPhiBins = 12;
+  int nPhiBins = 32*3;//5/3 degree bins
+  double phiMax = 7.*M_PI/9.;//140 degrees
+  double phiMin = -1.*M_PI/9.;//-20 degrees
   
   // Declaration of leaf types
   std::vector<int>     *tc_layer = 0;
@@ -251,15 +272,17 @@ int main(){
 
     //R/Z Histograms
 
-    TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
+    TH2D * ROverZ_Inclusive = new TH2D("ROverZ_Inclusive","",42,0.076,0.58,nPhiBins,phiMin,phiMax);
     std::map<std::tuple<int,int,int,int>,TH2D*> ROverZ_per_module;
+
     //Create one for each module (silicon at first)
     for ( int i = 0; i < 15; i++){//u
       for ( int j = 0; j < 15; j++){//v
 	for ( int k = 1; k < 53; k++){//layer
 
 	  if ( k < 28 && k%2 == 0 ) continue;
-	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
+	  ROverZ_per_module[std::make_tuple(0,i,j,k)] = new TH2D( ("ROverZ_silicon_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,phiMin,phiMax);
+
 	}
       }
     }
@@ -268,7 +291,7 @@ int main(){
       for ( int j = 0; j < 12; j++){
 	for ( int k = 37; k < 53; k++){
 
-	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH2D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,0,2*M_PI/3);
+	  ROverZ_per_module[std::make_tuple(1,i,j,k)] = new TH2D( ("ROverZ_scintillator_" + std::to_string(i) + "_" +  std::to_string(j) +"_"+ std::to_string(k)).c_str(),"",42,0.076,0.58,nPhiBins,phiMin,phiMax);
 
 	}
       }
@@ -297,47 +320,54 @@ int main(){
 	int u = tc_waferu->at(j);
 	int v = tc_waferv->at(j);
 
-	//Fill Eta Histograms	
-	std::pair<float,float> eta_phi = getROverZPhi(tc_x->at(j),tc_y->at(j),tc_z->at(j));
-	
-	ROverZ_Inclusive->Fill(std::abs(eta_phi.first),eta_phi.second);
+       	//u,v for silicon and eta,phi for scintillator
+	std::pair<int,int> coordinates = std::make_pair(u,v);
+	unsigned sector = 0;
 	
 	if ( u > -990 ){//Silicon
-	  std::pair<int,int> uv = std::make_pair(u,v);
-	  unsigned sector = uvMapping(tc_layer->at(j),uv);
+
+	  sector = uvMapping(tc_layer->at(j),coordinates);
 	  
 	  if ( tc_zside->at(j) > 0 ){
-	    per_event_plus.at(sector)->Fill(uv.first , uv.second, tc_layer->at(j) );
+	    per_event_plus.at(sector)->Fill(coordinates.first , coordinates.second, tc_layer->at(j) );
 	  }
 	  else if ( tc_zside->at(j) < 0 ){
-	    per_event_minus.at(sector)->Fill(uv.first , uv.second, tc_layer->at(j) );
+	    per_event_minus.at(sector)->Fill(coordinates.first , coordinates.second, tc_layer->at(j) );
 	  }
 
-	  ROverZ_per_module[std::make_tuple(0,uv.first,uv.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first),eta_phi.second);
-	  
 	}
 	else{
 	  int eta = tc_cellu->at(j);
 	  int phi = tc_cellv->at(j);
-	
-	  std::pair<int,int> etaphi = std::make_pair(eta,phi);
-	  unsigned sector = etaphiMapping(tc_layer->at(j),etaphi);
+
+	  coordinates = std::make_pair(eta,phi);
+	  
+	  sector = etaphiMapping(tc_layer->at(j),coordinates);
+
 	  if ( tc_zside->at(j) > 0 ){
-	    per_event_plus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
+	    per_event_plus_scin.at(sector)->Fill(coordinates.first , coordinates.second, tc_layer->at(j) );
 	  }
 	  else if ( tc_zside->at(j) < 0 ){
-	    per_event_minus_scin.at(sector)->Fill(etaphi.first , etaphi.second, tc_layer->at(j) );
+	    per_event_minus_scin.at(sector)->Fill(coordinates.first , coordinates.second, tc_layer->at(j) );
 	  }
-
-	  ROverZ_per_module[std::make_tuple(1,etaphi.first,etaphi.second,tc_layer->at(j))]->Fill(std::abs(eta_phi.first),eta_phi.second);
 
 	}
 
-      
+	//Fill R/Z-Phi Histograms
+	std::pair<float,float> roverz_phi = getROverZPhi(tc_x->at(j),tc_y->at(j),tc_z->at(j),sector);
+	ROverZ_Inclusive->Fill(std::abs(roverz_phi.first),roverz_phi.second);
 
-	
+        if ( u > -990 ){//Silicon
+	  ROverZ_per_module[std::make_tuple(0,coordinates.first,coordinates.second,tc_layer->at(j))]->Fill(std::abs(roverz_phi.first),roverz_phi.second);
+	}
+	else{
+	  ROverZ_per_module[std::make_tuple(1,coordinates.first,coordinates.second,tc_layer->at(j))]->Fill(std::abs(roverz_phi.first),roverz_phi.second);
+	}
+      	
       }
 
+
+      
       std::vector<TH3D*> words_plus;
       std::vector<TH3D*> words_minus;
       std::vector<TH3D*> words_plus_scin;
@@ -443,7 +473,7 @@ int main(){
 
 
     //Save Eta Histograms	
-    TFile * file_out = new TFile("ROverZHistograms.root","RECREATE");
+    TFile * file_out = new TFile(TString(file_ROverZHistograms),"RECREATE");
     file_out->cd();
     ROverZ_Inclusive->Write();
 
@@ -455,7 +485,7 @@ int main(){
 
     //Create output csv
     std::ofstream fout;
-    fout.open ("average_tcs_sil.csv");
+    fout.open (average_tcs_sil);
 
     for ( int i = 0; i < 15; i++){
       for ( int j = 0; j < 15; j++){
@@ -470,7 +500,7 @@ int main(){
 
     fout.close();
 
-    fout.open ("average_tcs_scin.csv");
+    fout.open (average_tcs_scin);
     for ( int i = 0; i < 5; i++){
       for ( int j = 0; j < 12; j++){
 	for ( int k = 37; k < 53; k++){
